@@ -1,0 +1,32 @@
+:root {
+  --bg: #14110e;
+  --bg-2: #1c1814;
+  --ink: #f3eadf;
+  --muted: #b7a898;
+  --line: rgba(243, 234, 223, 0.12);
+  --accent: #e07a3d;
+  --accent-2: #f2c094;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: #0b0908;
+  color: var(--ink);
+  font-family: var(--font-body), "PingFang SC", "Hiragino Sans GB", sans-serif;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+}

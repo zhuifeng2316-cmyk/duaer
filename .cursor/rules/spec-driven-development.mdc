@@ -1,0 +1,21 @@
+---
+description: Spec-driven development for Duaer
+alwaysApply: true
+---
+
+# Spec-Driven Development（强制）
+
+开发与测试必须遵守 `.specify/memory/constitution.md`。没有 feature 的 `spec.md` / `plan.md` / `tasks.md`，不得直接大规模写业务代码。
+
+## 产品核心
+
+主路径：**人不出镜的 AI 口播**。人物照片 + 可复用克隆音色 → 确定文案 → 确定图片分镜 → 生成口播 → 生成配乐 → 写合成稿 → 合成视频。
+禁止把视频模型出片、对嘴型数字人抬成默认成片方式。C 端不写厂商名。克隆静帧走火山方舟，文案/分镜/合成稿/口播/配乐走点物 Flow。
+
+## 流程
+
+`specify` → `plan` → `tasks` → `implement`。涉及 UI 时对照真实产品（剪映图文成片 / CapCut 比例 / Photos Memories）。
+
+## 三层测试
+
+单元 + 接口 + Cursor 浏览器。有前端改动不可跳过浏览器。
