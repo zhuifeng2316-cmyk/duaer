@@ -18,13 +18,19 @@ export function buildCopySystem(count: number, durationSec: number, each: number
 - 简体中文；不要写模型或通道名`;
 }
 
-export function buildBoardSystem(count: number): string {
+export function buildBoardSystem(count: number, peopleCount = 1): string {
+  const people = Math.max(1, peopleCount);
+  const cast =
+    people > 1
+      ? `- 已选定 ${people} 个人物。可以同框或分开出现，每人外貌以对应参考照为准；不要再写没选中的路人，除非口播明确需要别人同框`
+      : `- 默认每镜只有这一个人。不要写路人、同事、另一张脸、人群；除非口播内容明确需要别人同框，才在 imagePrompt 里写清楚（例如同事、路人）`;
   return `文案已经定稿。你只补「图片分镜」，不得改 hook、cta、口播、屏幕字。只输出 JSON：
-{"shots":[{"imagePrompt":"只写这一镜的场景、光线、构图、气氛；不要描写另一张脸，不要重新设计发型五官年龄服装","scene":"这一镜短场景名","motion":"push-in|pull-out|pan-left|pan-right|punch"}]}
+{"shots":[{"imagePrompt":"只写这一镜的场景、光线、构图、气氛；不要重新设计发型五官年龄服装","scene":"这一镜短场景名","motion":"push-in|pull-out|pan-left|pan-right|punch"}]}
 硬性规则：
 - 恰好 ${count} 镜，顺序与已定文案一一对应
 - 每镜 imagePrompt 必须是电影大片的场景和光，不要写成手机自拍或证件照
 - 人物外貌以参考照片为准：不要写新的脸，不要给人物换一套戏服
+${cast}
 - 不要写镜头运动长镜头
 - 不要改写任何口播或屏幕字
 - 简体中文；不要写模型或通道名`;
@@ -106,6 +112,14 @@ export function formatScriptCopy(script: Script): string {
   });
   if (script.cta) lines.push(`结尾：${script.cta}`);
   return lines.join("\n");
+}
+
+export function shotBoardText(shot: { imagePrompt?: string; scene?: string }): string {
+  return (shot.imagePrompt || shot.scene || "").trim();
+}
+
+export function shotStillRel(index: number): string {
+  return `stills/shot-${index + 1}.png`;
 }
 
 export function formatScriptBoard(script: Script): string {
@@ -212,8 +226,10 @@ export async function generateBoard(input: {
   script: Script;
   look: string;
   aspect: string;
+  peopleCount?: number;
   onDelta?: (draft: string) => void | Promise<void>;
 }): Promise<Script> {
+  const peopleCount = Math.max(1, input.peopleCount || 1);
   if (isFlowMock()) {
     const script = applyBoard(input.script, {
       shots: input.script.shots.map((shot, i) => ({
@@ -229,17 +245,21 @@ export async function generateBoard(input: {
   const locked = input.script.shots
     .map((s, i) => `${i + 1}. 屏幕字：${s.onScreenText}；口播：${s.voiceover}`)
     .join("\n");
+  const castLine =
+    peopleCount > 1
+      ? `已选定 ${peopleCount} 个人物，可以同框或分开出现，不要再加没选中的人。`
+      : "图片分镜必须是文字风景/场景/构图描述，服从电影大片要求，并且每镜默认只有这一个人，不要写路人。";
   const content = await flowChatStream({
     model: getScriptModel(),
     kind: "分镜",
     maxTokens: 3500,
-    system: buildBoardSystem(input.script.shots.length),
+    system: buildBoardSystem(input.script.shots.length, peopleCount),
     user: [
       `画幅：${input.aspect}。强制电影大片。气质补充：${look}`,
       CINEMA_STILL_LOCK,
       "已定文案，按顺序补画面描述，不要出图，不要改口播和屏幕字：",
       locked,
-      "图片分镜必须是文字风景/场景/构图描述，服从电影大片要求，并且每镜都是同一人物。",
+      castLine,
       "这是口播短视频：口播是画外音，画面里的人不要对镜头张嘴主持。",
     ].join("\n"),
     onDelta: async (raw) => {

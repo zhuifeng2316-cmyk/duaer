@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ASPECTS, type Aspect } from "@/lib/aspect";
 import { DURATION_PRESETS } from "@/lib/board";
 import {
@@ -63,32 +64,8 @@ type PublicTurn = {
   regenViewId?: string | null;
 };
 
-type Shot = { scene: string; imagePrompt?: string; onScreenText: string; voiceover: string; durationSec: number; motion: string };
-
-type PublicProject = {
-  id: string;
-  idea: string;
-  aspect: Aspect;
-  status: string;
-  phase: string;
-  progress: number;
-  message: string;
-  error: string | null;
-  musicError: string | null;
-  speechError: string | null;
-  script: { hook: string; cta: string; shots: Shot[] } | null;
-  draftText?: string;
-  stillUrls: string[];
-  finalUrl: string | null;
-};
-
-function posterClass(aspect: Aspect): string {
-  if (aspect === "1:1") return styles.sq;
-  if (aspect === "16:9") return styles.wide;
-  return styles.tall;
-}
-
 export default function HomePage() {
+  const router = useRouter();
   const [files, setFiles] = useState<File[]>([]);
   const [voices, setVoices] = useState<PublicVoice[]>([]);
   const [characters, setCharacters] = useState<PublicCharacter[]>([]);
@@ -97,7 +74,6 @@ export default function HomePage() {
   const [inspectCharacterId, setInspectCharacterId] = useState("");
   const [characterDetail, setCharacterDetail] = useState<CharacterDetail | null>(null);
   const [charNameEdit, setCharNameEdit] = useState("");
-  const [confirmingCopy, setConfirmingCopy] = useState(false);
   const [voiceName, setVoiceName] = useState("");
   const [nameEdits, setNameEdits] = useState<Record<string, string>>({});
   const [savingCharacter, setSavingCharacter] = useState(false);
@@ -114,7 +90,6 @@ export default function HomePage() {
   const [look, setLook] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [project, setProject] = useState<PublicProject | null>(null);
   const [turn, setTurn] = useState<PublicTurn | null>(null);
   const [splitting, setSplitting] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -128,12 +103,7 @@ export default function HomePage() {
   const recMimeRef = useRef("audio/webm");
   const recStopTimerRef = useRef(0);
 
-  const producing =
-    busy || project?.status === "queued" || project?.status === "running";
-  const reviewingCopy = project?.status === "review" && project.phase !== "board";
-  const reviewingBoard = project?.status === "review" && project.phase === "board";
-  const writingCopy = producing && (project?.phase === "copy" || !project?.phase || project?.phase === "idle");
-  const writingBoard = producing && project?.phase === "board";
+  const producing = busy;
   const cutting =
     splitting || turn?.status === "cutting" || (turn?.status === "queued" && !turn.headUrl);
   const expanding = turn?.status === "running";
@@ -182,18 +152,6 @@ export default function HomePage() {
       if (recorderRef.current && recorderRef.current.state !== "inactive") recorderRef.current.stop();
     };
   }, []);
-
-  useEffect(() => {
-    if (!project?.id) return;
-    if (project.status === "ready" || project.status === "failed" || project.status === "review") return;
-    const ms = project.phase === "copy" || project.phase === "board" ? 280 : 1000;
-    const t = setInterval(async () => {
-      const res = await fetch(`/api/projects/${project.id}`);
-      const data = await res.json();
-      if (data.project) setProject(data.project);
-    }, ms);
-    return () => clearInterval(t);
-  }, [project?.id, project?.status, project?.phase]);
 
   useEffect(() => {
     if (!turn?.id) return;
@@ -254,7 +212,9 @@ export default function HomePage() {
       const res = await fetch("/api/projects", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "提交失败");
-      setProject(data.project);
+      const id = data.project?.id;
+      if (!id) throw new Error("提交失败");
+      router.push(`/talks/${id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "提交失败");
     } finally {
@@ -283,38 +243,6 @@ export default function HomePage() {
       setError(err instanceof Error ? err.message : "抠头像失败");
     } finally {
       setSplitting(false);
-    }
-  }
-
-  async function confirmCopy() {
-    if (!project || project.status !== "review" || confirmingCopy) return;
-    setConfirmingCopy(true);
-    setError("");
-    try {
-      const res = await fetch(`/api/projects/${project.id}/confirm`, { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "确认失败");
-      if (data.project) setProject(data.project);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "确认失败");
-    } finally {
-      setConfirmingCopy(false);
-    }
-  }
-
-  async function rewriteCopy() {
-    if (!project || project.status !== "review" || confirmingCopy) return;
-    setConfirmingCopy(true);
-    setError("");
-    try {
-      const res = await fetch(`/api/projects/${project.id}/rewrite`, { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "重写失败");
-      if (data.project) setProject(data.project);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "重写失败");
-    } finally {
-      setConfirmingCopy(false);
     }
   }
 
@@ -662,15 +590,8 @@ export default function HomePage() {
   const charExpanding = characterDetail?.status === "expanding";
   const charRerunning = characterDetail?.status === "rerunning";
   const turnBusy = cutting || expanding || reviewing || enhancing || rerunning;
-  const showProject = Boolean(project);
   const showTurn = Boolean(turn) && (turnBusy || !characterDetail);
-  const showCharacter = Boolean(characterDetail) && !showProject && !showTurn;
-
-  const shotCount = project?.script?.shots.length || 0;
-  const showImageWall =
-    (project?.stillUrls.length || 0) > 0 ||
-    Boolean(producing && project && ["images", "speech", "music", "html", "assemble"].includes(project.phase));
-  const slots = showImageWall ? Math.max(shotCount, project?.stillUrls.length || 0) : 0;
+  const showCharacter = Boolean(characterDetail) && !showTurn;
   const turnFaces = turn?.faces || [];
   const focusFace = turnFaces.find((f) => f.selected) || turnFaces[0];
   const focusUrl = focusFace?.url || turn?.headUrl || null;
@@ -682,12 +603,7 @@ export default function HomePage() {
 
   return (
     <div className={styles.world}>
-      <header className={styles.top}>
-        <p className={styles.mark}>Duaer</p>
-        <span className={styles.topNote}>人不出镜 · 克隆音色 · 克隆画面</span>
-      </header>
-
-      <div className={project || turn || characterDetail ? styles.live : styles.layout}>
+      <div className={turn || characterDetail ? styles.live : styles.layout}>
         <div className={styles.rail}>
           <section className={styles.hero}>
             <h1 className={styles.heroTitle}>
@@ -880,18 +796,8 @@ export default function HomePage() {
             rows={2}
           />
 
-          <button className={styles.go} type="submit" disabled={producing || reviewingCopy || reviewingBoard}>
-            {producing
-              ? writingBoard
-                ? "正在写分镜…"
-                : writingCopy
-                  ? "正在写文案…"
-                  : "正在出片…"
-              : reviewingBoard
-                ? "先确认右边的分镜"
-                : reviewingCopy
-                  ? "先确认右边的文案"
-                  : "先写文案"}
+          <button className={styles.go} type="submit" disabled={producing}>
+            {producing ? "正在打开这条口播…" : "先写文案"}
           </button>
           {error && <p className={styles.err}>{error}</p>}
         </form>
@@ -899,7 +805,7 @@ export default function HomePage() {
 
         <section className={styles.stage} aria-live="polite">
           <div className={styles.panel}>
-            {!showProject && !showTurn && !showCharacter && (
+            {!showTurn && !showCharacter && (
               <div className={styles.empty}>
                     <p>分镜墙</p>
                     <small>文案定了之后，这里先出分镜文字，确认后再出图。也可先点开已保存的人物，看八个方位</small>
@@ -1198,173 +1104,6 @@ export default function HomePage() {
                       生成八个方位
                     </button>
                   </div>
-                )}
-              </>
-            )}
-            {project && (
-              <>
-                <div className={styles.bar}>
-                  <div>
-                    <b>{project.message}</b>
-                    <i className={styles.meter} style={{ width: `${project.progress}%` }} />
-                  </div>
-                  <span>
-                    {project.progress}% · {project.aspect}
-                    {shotCount ? ` · ${shotCount}镜` : ""}
-                  </span>
-                </div>
-                {project.error && <p className={styles.err}>{project.error}</p>}
-                {project.musicError && <p className={styles.warn}>配乐没加上：{project.musicError}</p>}
-                {project.speechError && <p className={styles.warn}>口播没加上：{project.speechError}</p>}
-
-                {(writingCopy || writingBoard) && project.draftText && (
-                  <div className={styles.copyReview}>
-                    <p className={styles.voiceLabel}>
-                      {writingBoard ? "图片分镜" : "口播文案"}
-                      <small>正在写…</small>
-                    </p>
-                    <pre className={styles.streamDraft}>{project.draftText}</pre>
-                  </div>
-                )}
-
-                {reviewingCopy && project.script && (
-                  <div className={styles.copyReview}>
-                    <p className={styles.voiceLabel}>
-                      口播文案
-                      <small>确认后才写图片分镜文字</small>
-                    </p>
-                    <ol className={styles.shots}>
-                      <li>
-                        <em className={styles.shotLine}>钩子</em> {project.script.hook}
-                      </li>
-                      {project.script.shots.map((s, i) => (
-                        <li key={i}>
-                          <em className={styles.shotLine}>{s.onScreenText || `镜 ${i + 1}`}</em> {s.voiceover}
-                        </li>
-                      ))}
-                      <li>
-                        <em className={styles.shotLine}>结尾</em> {project.script.cta}
-                      </li>
-                    </ol>
-                    <div className={styles.reviewActions}>
-                      <button
-                        className={styles.go}
-                        type="button"
-                        disabled={confirmingCopy}
-                        onClick={() => void confirmCopy()}
-                      >
-                        {confirmingCopy ? "接下来写分镜…" : "确认文案，写图片分镜"}
-                      </button>
-                      <button
-                        className={styles.ratio}
-                        type="button"
-                        disabled={confirmingCopy}
-                        onClick={() => void rewriteCopy()}
-                      >
-                        重写文案
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {reviewingBoard && project.script && (
-                  <div className={styles.copyReview}>
-                    <p className={styles.voiceLabel}>
-                      图片分镜
-                      <small>先确认这些场景描述，再按描述出图</small>
-                    </p>
-                    <ol className={styles.shots}>
-                      {project.script.shots.map((s, i) => (
-                        <li key={i}>
-                          <em className={styles.shotLine}>{s.onScreenText || `镜 ${i + 1}`}</em>
-                          {s.imagePrompt || s.scene}
-                        </li>
-                      ))}
-                    </ol>
-                    <div className={styles.reviewActions}>
-                      <button
-                        className={styles.go}
-                        type="button"
-                        disabled={confirmingCopy}
-                        onClick={() => void confirmCopy()}
-                      >
-                        {confirmingCopy ? "开始出图…" : "确认分镜，开始出图"}
-                      </button>
-                      <button
-                        className={styles.ratio}
-                        type="button"
-                        disabled={confirmingCopy}
-                        onClick={() => void rewriteCopy()}
-                      >
-                        重写分镜
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {slots === 0 ? (
-                  !reviewingCopy && !reviewingBoard && !writingCopy && !writingBoard ? (
-                  <div className={styles.empty}>
-                    <p>分镜墙</p>
-                    <small>分镜文字定了之后，这里会按描述出图</small>
-                  </div>
-                  ) : null
-                ) : (
-                  <div
-                    className={`${styles.wall} ${
-                      project.aspect === "16:9"
-                        ? styles.wallWide
-                        : project.aspect === "1:1"
-                          ? styles.wallSq
-                          : styles.wallTall
-                    }`}
-                  >
-                    {Array.from({ length: slots }, (_, i) => {
-                      const src = project.stillUrls[i];
-                      const shot = project.script?.shots[i];
-                      return (
-                        <figure key={src || `slot-${i}`} className={styles.poster}>
-                          <div className={`${styles.frame} ${posterClass(project.aspect)}`}>
-                            {src ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={src} alt={shot?.scene || `镜 ${i + 1}`} />
-                            ) : (
-                              <div className={styles.waiting}>
-                                <span>{String(i + 1).padStart(2, "0")}</span>
-                                <small>出图中</small>
-                              </div>
-                            )}
-                          </div>
-                          <figcaption>
-                            <strong>{shot?.onScreenText || `镜 ${i + 1}`}</strong>
-                            {shot ? (
-                              <small>
-                                {shot.durationSec}秒
-                                {shot.scene ? ` · ${shot.scene}` : ""}
-                              </small>
-                            ) : null}
-                          </figcaption>
-                        </figure>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {project.script && !reviewingCopy && !reviewingBoard && (
-                  <ol className={styles.shots}>
-                    <li>
-                      <em className={styles.shotLine}>钩子</em> {project.script.hook}
-                    </li>
-                    {project.script.shots.map((s, i) => (
-                      <li key={i}>
-                        <em className={styles.shotLine}>{s.onScreenText || `镜 ${i + 1}`}</em> {s.voiceover || s.scene}
-                      </li>
-                    ))}
-                  </ol>
-                )}
-
-                {project.finalUrl && (
-                  <video className={styles.video} src={project.finalUrl} controls playsInline />
                 )}
               </>
             )}

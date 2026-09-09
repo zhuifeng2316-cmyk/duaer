@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import { getSiteUrl } from "@/lib/site";
+import { SiteNav } from "./site-nav";
 import "./globals.css";
 
 const body = Manrope({
@@ -21,7 +22,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="zh-CN">
-      <body className={body.variable}>{children}</body>
+      <body className={body.variable}>
+        <SiteNav />
+        {children}
+      </body>
     </html>
   );
 }

@@ -22,6 +22,7 @@ describe("cinema lock", () => {
   it("asks the board writer for movie frames", () => {
     expect(buildBoardSystem(5)).toMatch(/电影大片/);
     expect(buildBoardSystem(5)).toMatch(/不要写成手机自拍/);
+    expect(buildBoardSystem(5)).toMatch(/不要写路人/);
   });
 
   it("puts the extracted face into a movie frame without a new actor", () => {

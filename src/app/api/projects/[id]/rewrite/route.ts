@@ -13,6 +13,9 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   if (isProduceBusy(id)) {
     return NextResponse.json({ error: "正在写，稍后再试" }, { status: 400 });
   }
+  if (project.phase === "images") {
+    return NextResponse.json({ error: "画面阶段请重做某一镜" }, { status: 400 });
+  }
   if (project.phase === "board") {
     const saved = await updateProject(id, {
       status: "queued",

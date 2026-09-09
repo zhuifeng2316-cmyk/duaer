@@ -5,9 +5,17 @@ import { parseDurationSec } from "@/lib/board";
 import { bindCharacterIdentity, readCharacter, setLastCharacterIds } from "@/lib/character-store";
 import { assertPhoto, extForMime, MAX_PHOTOS } from "@/lib/photos";
 import { startProduce } from "@/lib/pipeline";
-import { createProject, projectDir, projectFile, updateProject, writeProjectFile } from "@/lib/store";
-import { publicProject } from "@/lib/types";
+import { createProject, listProjects, projectDir, projectFile, updateProject, writeProjectFile } from "@/lib/store";
+import { publicProject, publicTalkCard } from "@/lib/types";
 import { bindVoiceSample, readVoice, setLastVoiceId } from "@/lib/voice-store";
+
+export async function GET() {
+  const rows = await listProjects();
+  return NextResponse.json(
+    { talks: rows.map(publicTalkCard) },
+    { headers: { "Cache-Control": "no-store" } },
+  );
+}
 
 export async function POST(req: Request) {
   try {
@@ -79,6 +87,7 @@ export async function POST(req: Request) {
     }
     const saved = await updateProject(project.id, {
       photos,
+      characterIds,
       voiceId,
       voicePath,
       status: "queued",

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isProduceBusy, startAfterBoard, startAfterCopy } from "@/lib/pipeline";
+import { isProduceBusy, startAfterBoard, startAfterCopy, startAfterStills } from "@/lib/pipeline";
 import { readProject, updateProject } from "@/lib/store";
 import { publicProject } from "@/lib/types";
 
@@ -12,6 +12,21 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   }
   if (isProduceBusy(id)) {
     return NextResponse.json({ error: "正在写，稍后再确认" }, { status: 400 });
+  }
+  if (project.phase === "images") {
+    if (project.stills.length < project.script.shots.length) {
+      return NextResponse.json({ error: "先把分镜画面出齐再确认" }, { status: 400 });
+    }
+    const saved = await updateProject(id, {
+      status: "queued",
+      phase: "speech",
+      message: "画面已确认，开始生成口播",
+      error: null,
+      draftText: "",
+      regenShotIndex: null,
+    });
+    startAfterStills(id);
+    return NextResponse.json({ project: publicProject(saved) });
   }
   if (project.phase === "board") {
     if (!project.script.shots.some((shot) => shot.imagePrompt || shot.scene)) {

@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 import { v4 as uuid } from "uuid";
 import type { Aspect } from "./aspect";
@@ -36,12 +36,15 @@ export async function createProject(input: {
     targetDurationSec: input.targetDurationSec,
     aspect: input.aspect,
     photos: [],
+    characterIds: [],
     voiceId: null,
     voicePath: null,
     stills: [],
     htmlPath: null,
     script: null,
     draftText: "",
+    stillRev: 0,
+    regenShotIndex: null,
     status: "queued",
     phase: "idle",
     progress: 0,
@@ -64,9 +67,33 @@ export async function readProject(id: string): Promise<Project | null> {
   }
 }
 
+export async function listProjects(): Promise<Project[]> {
+  let names: string[] = [];
+  try {
+    names = await readdir(ROOT);
+  } catch {
+    return [];
+  }
+  const rows: Project[] = [];
+  for (const name of names) {
+    const row = await readProject(name);
+    if (row) rows.push(row);
+  }
+  rows.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  return rows;
+}
+
 export async function updateProject(id: string, patch: Partial<Project>): Promise<Project> {
   const cur = await readProject(id);
   if (!cur) throw new Error("项目不存在");
+  const next = { ...cur, ...patch };
+  await writeFile(projectFile(id, "project.json"), JSON.stringify(next, null, 2), "utf8");
+  return next;
+}
+
+export async function tryUpdateProject(id: string, patch: Partial<Project>): Promise<Project | null> {
+  const cur = await readProject(id);
+  if (!cur) return null;
   const next = { ...cur, ...patch };
   await writeFile(projectFile(id, "project.json"), JSON.stringify(next, null, 2), "utf8");
   return next;

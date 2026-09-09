@@ -35,7 +35,25 @@ describe("image gen payload", () => {
     expect(p).toMatch(/不要换人/);
     expect(p).toMatch(/衣服颜色和款式尽量原样/);
     expect(p).toMatch(/电影大片静帧/);
+    expect(p).toMatch(/只能出现附图这一个人/);
+    expect(p).toMatch(/不要路人/);
     expect(p).not.toMatch(/白人银发绿眼/);
+  });
+
+  it("does not treat extra reference photos as extra people", () => {
+    const p = cloneImagePrompt({ scene: "咖啡馆", aspect: "9:16", peopleCount: 1 });
+    expect(p).toMatch(/只能出现附图这一个人/);
+    expect(p).not.toMatch(/2 个不同的人/);
+  });
+
+  it("allows extra people only when the board text asks", () => {
+    const p = cloneImagePrompt({
+      scene: "咖啡馆",
+      aspect: "9:16",
+      imagePrompt: "窗边特写，同事坐在对面闭口",
+    });
+    expect(p).toMatch(/分镜要求的其他人可以按描述出现/);
+    expect(p).not.toMatch(/只能出现附图这一个人/);
   });
 
   it("asks for every selected person when there are multiple heads", () => {
@@ -43,5 +61,7 @@ describe("image gen payload", () => {
     expect(p).toMatch(/2 个不同的人/);
     expect(p).toMatch(/同时出现/);
     expect(p).toMatch(/禁止漏人/);
+    expect(p).toMatch(/不要再加没选中的路人/);
+    expect(p).not.toMatch(/只能出现附图这一个人/);
   });
 });

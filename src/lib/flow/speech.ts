@@ -9,6 +9,8 @@ import {
   mapFlowHttpError,
 } from "./config";
 
+export const CLONE_VOICE_MISS = "选中的克隆音色这次没接上，口播用了备用声音";
+
 export function getSpeechModel(): string {
   return (process.env.SPEECH_MODEL || "ark-tts-default").trim();
 }
@@ -39,13 +41,15 @@ export function buildFlowSpeechBody(
   const body: Record<string, unknown> = {
     model: getSpeechModel(),
     input: text,
-    voice: "zh_female",
     response_format: "mp3",
   };
   if (ref) {
     const audio = `data:${ref.mime};base64,${ref.base64}`;
+    body.voice = "clone";
     body.reference_audio = audio;
     body.extra_body = { references: [{ audio }] };
+  } else {
+    body.voice = "zh_female";
   }
   return body;
 }
@@ -95,12 +99,22 @@ async function postFlowSpeech(body: Record<string, unknown>, destAiff: string): 
   return true;
 }
 
-async function tryFlowSpeech(text: string, destAiff: string, samplePath?: string): Promise<boolean> {
+async function tryClonedSpeech(text: string, destAiff: string, samplePath: string): Promise<boolean> {
+  const apiKey = getFlowApiKey();
+  if (!apiKey) return false;
+  const ref = await readSpeechRef(samplePath, path.dirname(destAiff));
+  if (!ref) return false;
+  try {
+    return await postFlowSpeech(buildFlowSpeechBody(text, ref), destAiff);
+  } catch {
+    return false;
+  }
+}
+
+async function tryPlainSpeech(text: string, destAiff: string): Promise<boolean> {
   const apiKey = getFlowApiKey();
   if (!apiKey) return false;
   try {
-    const ref = samplePath ? await readSpeechRef(samplePath, path.dirname(destAiff)) : null;
-    if (ref && (await postFlowSpeech(buildFlowSpeechBody(text, ref), destAiff))) return true;
     return await postFlowSpeech(buildFlowSpeechBody(text), destAiff);
   } catch {
     return false;
@@ -111,16 +125,37 @@ async function macSay(text: string, destAiff: string): Promise<void> {
   await run("say", ["-v", getSpeechVoice(), "-r", "185", "-o", destAiff, text]);
 }
 
+export type SpokenAudio = {
+  path: string;
+  cloneUsed: boolean;
+  warning: string | null;
+};
+
 export async function generateSpokenAudio(
   text: string,
   destAiff: string,
   samplePath?: string | null,
-): Promise<string> {
+): Promise<SpokenAudio> {
   const spoken = text.replace(/\s+/g, " ").trim();
   if (!spoken) throw new Error("没有可念的口播");
   await mkdir(path.dirname(destAiff), { recursive: true });
   const mp3 = destAiff.replace(/\.aiff$/i, ".mp3");
-  if (await tryFlowSpeech(spoken, destAiff, samplePath || undefined)) return mp3;
+  const sample = samplePath || undefined;
+
+  if (sample) {
+    if (await tryClonedSpeech(spoken, destAiff, sample)) {
+      return { path: mp3, cloneUsed: true, warning: null };
+    }
+    if (await tryPlainSpeech(spoken, destAiff)) {
+      return { path: mp3, cloneUsed: false, warning: CLONE_VOICE_MISS };
+    }
+    await macSay(spoken, destAiff);
+    return { path: destAiff, cloneUsed: false, warning: CLONE_VOICE_MISS };
+  }
+
+  if (await tryPlainSpeech(spoken, destAiff)) {
+    return { path: mp3, cloneUsed: false, warning: null };
+  }
   await macSay(spoken, destAiff);
-  return destAiff;
+  return { path: destAiff, cloneUsed: false, warning: null };
 }

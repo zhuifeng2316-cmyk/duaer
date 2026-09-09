@@ -1,10 +1,10 @@
 .world {
-  height: 100dvh;
-  min-height: 100dvh;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 24px 28px;
+  padding: 16px 28px 24px;
   background: #0c0b0a;
 }
 
@@ -468,6 +468,27 @@
   white-space: nowrap;
 }
 
+.posterHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.posterHead strong {
+  min-width: 0;
+}
+
+.posterPrompt {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #cbbba8;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .redo {
   justify-self: start;
   background: transparent;
@@ -514,10 +535,143 @@
   background: #000;
 }
 
+.cutActions {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.ghost {
+  background: transparent;
+  color: #f3eadf;
+  border: 1px solid rgba(232, 201, 168, 0.28);
+  font-weight: 650;
+  padding: 12px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.ghost:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.editLink {
+  color: #d9854a;
+  font-size: 13px;
+}
+
+.timeline {
+  width: 100%;
+  min-height: 640px;
+  border: 1px solid rgba(232, 201, 168, 0.12);
+  border-radius: 14px;
+  background: #0b0a09;
+}
+
+.talkList {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  max-width: 760px;
+  width: 100%;
+  padding-bottom: 24px;
+}
+
+.talkCards {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.talkCard {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(232, 201, 168, 0.12);
+  background: #161310;
+  text-decoration: none;
+}
+
+.talkCard:hover {
+  border-color: rgba(217, 133, 74, 0.45);
+}
+
+.talkThumb,
+.talkThumbEmpty {
+  width: 72px;
+  height: 96px;
+  border-radius: 10px;
+  background: #0c0b0a;
+}
+
+.talkThumb {
+  object-fit: cover;
+  display: block;
+}
+
+.talkThumbEmpty {
+  display: grid;
+  place-content: center;
+  color: #9a8d80;
+  font-size: 12px;
+  background: #1c1814;
+}
+
+.talkMeta {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.talkMeta strong {
+  font-size: 16px;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.talkMeta small {
+  color: #9a8d80;
+  font-size: 13px;
+}
+
+.talkOnly {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.talkOnly > * {
+  flex: 1;
+  min-height: 0;
+}
+
+.talkIdea {
+  margin: 0;
+  color: #9a8d80;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.empty a {
+  color: #d9854a;
+}
+
 @media (max-width: 860px) {
   .world {
     height: auto;
-    min-height: 100dvh;
+    min-height: 0;
     overflow: visible;
     padding: 16px;
   }

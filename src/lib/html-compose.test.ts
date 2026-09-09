@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { MOCK_SCRIPT } from "./copy";
 import {
+  buildCaptionTrack,
   buildEditList,
+  buildHtmlSystem,
   extractHtmlDocument,
   fallbackCinemaHtml,
   generateCinemaHtml,
   htmlClipToStillRel,
   parseCompositionClips,
+  tokenizeCaption,
   validateCinemaHtml,
 } from "./html-compose";
 
@@ -31,11 +34,31 @@ describe("cinema html compose", () => {
     const html = fallbackCinemaHtml(list);
     expect(validateCinemaHtml(html, list)).toEqual({ ok: true });
     expect(html).toMatch(/data-composition-id="cinema"/);
-    expect(html).toContain("stills/shot-1.png");
+    expect(html).toContain('src="stills/shot-1.png"');
+    expect(html).not.toContain("../stills");
     expect(html).toContain("speech.wav");
     expect(html).toContain("bgm.mp3");
     expect(html).toMatch(/data-motion="push-in"/);
-    expect(html).not.toMatch(/https?:\/\//);
+    expect(html).toContain("data-color-grading=");
+    expect(html).toMatch(/"grain"/);
+    expect(html).toMatch(/"vignette"/);
+    expect(html).toMatch(/gsap\.timeline\(\s*\{\s*paused:\s*true/);
+    expect(html).toContain('window.__timelines["cinema"]');
+    expect(html).toMatch(/className = "hl-group"/);
+    expect(html).toMatch(/hl-word-bg/);
+    expect(html).toContain("id=\"vo\"");
+    expect(html).toContain("id=\"bgm\"");
+    expect(html).toContain('data-volume="1"');
+    expect(html).toContain('data-volume="0.16"');
+    expect(html).not.toContain("data-no-timeline");
+    expect(html).not.toMatch(/@keyframes ken-push/);
+    expect(html).toContain("temperature");
+    expect(html).toContain("cdn.jsdelivr.net/npm/gsap@3.14.2");
+  });
+
+  it("rejects a draft that skips the cinema look", () => {
+    const html = fallbackCinemaHtml(list).replace(/data-color-grading='[^']*'/g, "");
+    expect(validateCinemaHtml(html, list).ok).toBe(false);
   });
 
   it("rejects html that drops a still or uses a remote url", () => {
@@ -62,5 +85,22 @@ describe("cinema html compose", () => {
     const html = await generateCinemaHtml(list);
     process.env.FLOW_MOCK = prev;
     expect(validateCinemaHtml(html, list).ok).toBe(true);
+  });
+
+  it("tells the writer how to make a cinema cut", () => {
+    const system = buildHtmlSystem();
+    expect(system).toMatch(/胶片/);
+    expect(system).toMatch(/词级/);
+    expect(system).toMatch(/暂停/);
+    expect(system).toMatch(/对嘴型/);
+    expect(system).not.toMatch(/HyperFrames|HeyGen|方舟|豆包/i);
+  });
+
+  it("splits spoken lines into caption words", () => {
+    expect(tokenizeCaption("还在找人拍口播出镜吗")).toEqual([...("还在找人拍口播出镜吗")]);
+    const track = buildCaptionTrack(list);
+    expect(track.words.length).toBeGreaterThan(8);
+    expect(track.groups.length).toBeGreaterThan(2);
+    expect(track.words.map((w) => w.text).join("")).toContain("口播");
   });
 });

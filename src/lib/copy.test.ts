@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MOCK_SCRIPT, applyBoard, buildBoardSystem, buildCopySystem, formatCopyDraft, parseScript } from "./copy";
+import { MOCK_SCRIPT, applyBoard, buildBoardSystem, buildCopySystem, formatCopyDraft, parseScript, shotBoardText, shotStillRel } from "./copy";
 import { cloneImagePrompt } from "./flow/image";
 
 describe("copy script", () => {
@@ -11,6 +11,8 @@ describe("copy script", () => {
     expect(board).toMatch(/图片分镜/);
     expect(board).toMatch(/不得改/);
     expect(board).toMatch(/电影大片/);
+    expect(board).toMatch(/不要写路人/);
+    expect(buildBoardSystem(5, 2)).toMatch(/已选定 2 个人物/);
   });
 
   it("keeps locked voiceover when applying the board", () => {
@@ -52,6 +54,13 @@ describe("copy script", () => {
     const draft = formatCopyDraft(`{"hook":"你不用出镜","shots":[{"onScreenText":"看这里","voiceover":"今晚就能发"}]`);
     expect(draft).toMatch(/钩子：你不用出镜/);
     expect(draft).toMatch(/今晚就能发/);
+  });
+
+  it("prefers imagePrompt as the still caption", () => {
+    expect(shotBoardText({ imagePrompt: "雨夜霓虹下的人物特写", scene: "雨夜街头" })).toBe("雨夜霓虹下的人物特写");
+    expect(shotBoardText({ scene: "雨夜街头" })).toBe("雨夜街头");
+    expect(shotStillRel(0)).toBe("stills/shot-1.png");
+    expect(shotStillRel(3)).toBe("stills/shot-4.png");
   });
 
   it("keeps the mock script usable", () => {
