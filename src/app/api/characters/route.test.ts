@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { GET, POST } from "@/app/api/characters/route";
-import { GET as getCharacter } from "@/app/api/characters/[id]/route";
+import { GET as getCharacter, PATCH as renameCharacter } from "@/app/api/characters/[id]/route";
 import { GET as getCharacterMedia } from "@/app/api/characters/[id]/media/route";
 import { POST as expandCharacter } from "@/app/api/characters/[id]/expand/route";
 import { POST as regenCharacterView } from "@/app/api/characters/[id]/regen/route";
@@ -100,6 +100,35 @@ describe("characters API", () => {
     expect([400, 404]).toContain(res.status);
     const data = await res.json();
     expect(data.error).toMatch(/不存在|头像/);
+  });
+
+  it("renames a saved character", async () => {
+    const turn = await createTurn();
+    await writeTurnFile(turn.id, "heads/01.png", Buffer.from("crop-bytes"));
+    await updateTurn(turn.id, {
+      status: "review",
+      faces: [
+        { id: "1", label: "头像 1", crop: "heads/01.png", file: "heads/01.png", enhanced: false, selected: true },
+      ],
+    });
+    const created = await POST(
+      new Request("http://local/api/characters", {
+        method: "POST",
+        body: JSON.stringify({ turnId: turn.id }),
+      }),
+    );
+    const row = (await created.json()).characters[0];
+    trash.push(row.id);
+    const res = await renameCharacter(
+      new Request("http://local/api/characters/x", {
+        method: "PATCH",
+        body: JSON.stringify({ name: "阿宁" }),
+      }),
+      { params: Promise.resolve({ id: row.id }) },
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.character.name).toBe("阿宁");
   });
 
   it("returns eight angle slots for a saved character", async () => {

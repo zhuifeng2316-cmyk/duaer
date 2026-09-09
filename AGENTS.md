@@ -8,9 +8,9 @@
 2. [`.cursor/rules/spec-driven-development.mdc`](.cursor/rules/spec-driven-development.mdc)
 
 流程：`specify` → `plan` → `tasks` → `implement`（单测 + 接口测 + 浏览器 E2E）。
-当前 feature：[`specs/001-clone-cut-video/`](specs/001-clone-cut-video/)、[`specs/002-reusable-voice/`](specs/002-reusable-voice/)、[`specs/003-eight-angle-character/`](specs/003-eight-angle-character/)、[`specs/004-ark-html-compose/`](specs/004-ark-html-compose/)、[`specs/005-named-character/`](specs/005-named-character/)、[`specs/006-sqlite-library/`](specs/006-sqlite-library/)、[`specs/007-character-views/`](specs/007-character-views/)
+当前 feature：[`specs/001-clone-cut-video/`](specs/001-clone-cut-video/)、[`specs/002-reusable-voice/`](specs/002-reusable-voice/)、[`specs/003-eight-angle-character/`](specs/003-eight-angle-character/)、[`specs/004-ark-html-compose/`](specs/004-ark-html-compose/)、[`specs/005-named-character/`](specs/005-named-character/)、[`specs/006-sqlite-library/`](specs/006-sqlite-library/)、[`specs/007-character-views/`](specs/007-character-views/)、[`specs/008-voice-record/`](specs/008-voice-record/)、[`specs/009-confirm-copy/`](specs/009-confirm-copy/)、[`specs/010-board-then-images/`](specs/010-board-then-images/)
 
-**主路径**：确定文案 → 确定图片分镜 → 生成口播 → 生成配乐 → 写合成稿 → 合成视频。克隆静帧走火山方舟，文案/分镜/合成稿/口播/配乐走点物 Flow。视频模型出片不做，对嘴型数字人也不做。
+**主路径**：流式写文案并确认 → 写图片分镜文字并确认 → 按描述出图 → 生成口播 → 生成配乐 → 写合成稿 → 合成视频。克隆静帧走火山方舟，文案/分镜/合成稿/口播/配乐走点物 Flow。视频模型出片不做，对嘴型数字人也不做。
 
 **站点**：https://www.duaer.com
 

@@ -109,6 +109,14 @@ export async function saveCharacter(c: Character): Promise<Character> {
   return c;
 }
 
+export async function renameCharacter(id: string, name: string): Promise<Character> {
+  const character = await readCharacter(id);
+  if (!character) throw new Error("人物不存在");
+  const next = { ...character, name: parseCharacterName(name, character.name) };
+  upsertCharacter(next);
+  return next;
+}
+
 /** Original pixels only. Never the generated eight cinema stills. */
 export function characterIdentityRels(c: Character): string[] {
   const out: string[] = [];

@@ -30,7 +30,73 @@ export const PRODUCE_PHASES = ["copy", "board", "images", "speech", "music", "ht
 export function startProduce(projectId: string): void {
   if (running.has(projectId)) return;
   running.add(projectId);
-  void produce(projectId).finally(() => running.delete(projectId));
+  void writeCopy(projectId).finally(() => running.delete(projectId));
+}
+
+export function startAfterCopy(projectId: string): void {
+  if (running.has(projectId)) return;
+  running.add(projectId);
+  void writeBoard(projectId).finally(() => running.delete(projectId));
+}
+
+export function startAfterBoard(projectId: string): void {
+  if (running.has(projectId)) return;
+  running.add(projectId);
+  void produceFromImages(projectId).finally(() => running.delete(projectId));
+}
+
+export function startRewriteCopy(projectId: string): void {
+  if (running.has(projectId)) return;
+  running.add(projectId);
+  void writeCopy(projectId).finally(() => running.delete(projectId));
+}
+
+export function startRewriteBoard(projectId: string): void {
+  if (running.has(projectId)) return;
+  running.add(projectId);
+  void writeBoard(projectId).finally(() => running.delete(projectId));
+}
+
+export function isProduceBusy(projectId: string): boolean {
+  return running.has(projectId);
+}
+
+async function writeCopy(projectId: string): Promise<void> {
+  const project = await readProject(projectId);
+  if (!project) return;
+  try {
+    await assertFfmpeg();
+    await updateProject(projectId, { status: "running", phase: "copy", progress: 6, message: "在写口播文案…", error: null, draftText: "" });
+    let lastDraft = 0;
+    const copy = await generateCopy({
+      idea: project.idea,
+      durationSec: project.targetDurationSec || 15,
+      aspect: project.aspect,
+      onDelta: async (draft) => {
+        const now = Date.now();
+        if (now - lastDraft < 120) return;
+        lastDraft = now;
+        await updateProject(projectId, { draftText: draft, message: "正在写口播文案…" });
+      },
+    });
+    await updateProject(projectId, {
+      script: copy,
+      draftText: "",
+      status: "review",
+      phase: "copy",
+      progress: 18,
+      message: "文案写好了，确认后再写图片分镜",
+      error: null,
+    });
+  } catch (e) {
+    await updateProject(projectId, {
+      status: "failed",
+      phase: "error",
+      progress: 100,
+      message: "生成失败",
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
 }
 
 async function download(url: string, dest: string): Promise<void> {
@@ -44,25 +110,57 @@ function relIfExists(projectId: string, abs?: string): string | undefined {
   return path.relative(projectDir(projectId), abs).replace(/\\/g, "/");
 }
 
-async function produce(projectId: string): Promise<void> {
+async function writeBoard(projectId: string): Promise<void> {
   const project = await readProject(projectId);
   if (!project) return;
   try {
+    if (!project.script?.shots.length) throw new Error("先确认口播文案");
     await assertFfmpeg();
-    await updateProject(projectId, { status: "running", phase: "copy", progress: 6, message: "在确定文案…", error: null });
-    const copy = await generateCopy({
-      idea: project.idea,
-      durationSec: project.targetDurationSec || 15,
-      aspect: project.aspect,
-    });
-    await updateProject(projectId, { script: copy, progress: 14, phase: "board", message: "在确定图片分镜…" });
-
+    await updateProject(projectId, { status: "running", phase: "board", progress: 20, message: "在写图片分镜…", error: null, draftText: "" });
+    let lastDraft = 0;
     const script = await generateBoard({
-      script: copy,
+      script: project.script,
       look: project.look || "",
       aspect: project.aspect,
+      onDelta: async (draft) => {
+        const now = Date.now();
+        if (now - lastDraft < 120) return;
+        lastDraft = now;
+        await updateProject(projectId, { draftText: draft, message: "正在写图片分镜…" });
+      },
     });
-    await updateProject(projectId, { script, progress: 22, phase: "images", message: "在生成分镜画面…" });
+    await updateProject(projectId, {
+      script,
+      draftText: "",
+      status: "review",
+      phase: "board",
+      progress: 28,
+      stills: [],
+      message: "分镜写好了，确认后再出图",
+      error: null,
+    });
+  } catch (e) {
+    await updateProject(projectId, {
+      status: "failed",
+      phase: "error",
+      progress: 100,
+      message: "生成失败",
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
+
+async function produceFromImages(projectId: string): Promise<void> {
+  const project = await readProject(projectId);
+  if (!project) return;
+  try {
+    if (!project.script?.shots.length) throw new Error("先确认口播文案");
+    if (!project.script.shots.some((shot) => shot.imagePrompt || shot.scene)) {
+      throw new Error("先确认图片分镜");
+    }
+    await assertFfmpeg();
+    const script = project.script;
+    await updateProject(projectId, { status: "running", phase: "images", progress: 32, message: "在生成分镜画面…", error: null, draftText: "" });
 
     const photoAbs = project.photos.map((name) => projectFile(projectId, name));
     if (!photoAbs.length) throw new Error("人物参考图不见了，请重新上传");
@@ -79,7 +177,7 @@ async function produce(projectId: string): Promise<void> {
       const stillRel = `stills/shot-${i + 1}.png`;
       const stillAbs = projectFile(projectId, stillRel);
       await updateProject(projectId, {
-        progress: 22 + Math.round(((i + 1) / script.shots.length) * 28),
+        progress: 32 + Math.round(((i + 1) / script.shots.length) * 20),
         message: `生成分镜画面 ${i + 1}/${script.shots.length}…`,
       });
       if (isFlowMock()) {
@@ -98,7 +196,7 @@ async function produce(projectId: string): Promise<void> {
       await updateProject(projectId, {
         script,
         stills: [...stillNames],
-        progress: 22 + Math.round(((i + 1) / script.shots.length) * 28),
+        progress: 32 + Math.round(((i + 1) / script.shots.length) * 20),
         message: `生成分镜画面 ${i + 1}/${script.shots.length}…`,
       });
     }
@@ -114,7 +212,12 @@ async function produce(projectId: string): Promise<void> {
           const shot = script.shots[i]!;
           const line = spokenLine(shot);
           await updateProject(projectId, { message: `生成口播 ${i + 1}/${script.shots.length}…` });
-          const raw = await generateSpokenAudio(line, projectFile(projectId, "speech", `shot-${i + 1}.aiff`));
+          const sampleAbs = project.voicePath ? projectFile(projectId, project.voicePath) : undefined;
+          const raw = await generateSpokenAudio(
+            line,
+            projectFile(projectId, "speech", `shot-${i + 1}.aiff`),
+            sampleAbs,
+          );
           const wav = projectFile(projectId, "speech", `shot-${i + 1}.wav`);
           await audioToWav(raw, wav);
           shot.durationSec = Math.min(8, Math.max(2, await probeDuration(wav)));

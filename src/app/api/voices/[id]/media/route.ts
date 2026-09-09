@@ -20,9 +20,11 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   try {
     const buf = await readFile(abs);
     const ext = abs.slice(abs.lastIndexOf(".")).toLowerCase();
-    return new NextResponse(Uint8Array.from(buf), {
+    return new NextResponse(buf, {
       headers: {
         "Content-Type": MIME[ext] || "audio/mpeg",
+        "Content-Length": String(buf.byteLength),
+        "Accept-Ranges": "bytes",
         "Cache-Control": "private, no-store",
       },
     });

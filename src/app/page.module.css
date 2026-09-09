@@ -1,6 +1,10 @@
 .world {
+  height: 100dvh;
   min-height: 100dvh;
-  padding: 24px 28px 48px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 24px 28px;
   background: #0c0b0a;
 }
 
@@ -8,7 +12,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 28px;
+  margin-bottom: 20px;
+  flex-shrink: 0;
 }
 
 .mark {
@@ -26,10 +31,19 @@
 
 .layout,
 .live {
+  flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: 360px minmax(0, 1fr);
   gap: 28px;
-  align-items: start;
+  align-items: stretch;
+}
+
+.rail {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 8px;
 }
 
 .hero {
@@ -150,6 +164,13 @@
   font-weight: 400;
 }
 
+.recRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
 .voicePreview {
   width: 100%;
   height: 36px;
@@ -182,10 +203,13 @@
 
 .stage {
   min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .panel {
-  min-height: calc(100dvh - 96px);
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -353,6 +377,19 @@
   background: #0f0d0b;
 }
 
+.copyReview {
+  display: grid;
+  gap: 12px;
+}
+
+.streamDraft {
+  margin: 0;
+  white-space: pre-wrap;
+  font: inherit;
+  color: #f3eadf;
+  line-height: 1.65;
+}
+
 .reviewActions {
   display: grid;
   gap: 8px;
@@ -479,12 +516,21 @@
 
 @media (max-width: 860px) {
   .world {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
     padding: 16px;
   }
 
   .layout,
   .live {
     grid-template-columns: 1fr;
+    flex: none;
+  }
+
+  .rail,
+  .stage {
+    overflow: visible;
   }
 
   .stage,

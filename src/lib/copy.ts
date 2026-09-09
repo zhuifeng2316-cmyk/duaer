@@ -1,7 +1,7 @@
 import { parseMotion } from "./aspect";
 import { CINEMA_STILL_LOCK, DEFAULT_CINEMA_LOOK } from "./cinema";
 import { planBoard } from "./board";
-import { flowChat } from "./flow/chat";
+import { flowChatStream } from "./flow/chat";
 import { getScriptModel, isFlowMock } from "./flow/config";
 import { extractJsonObject } from "./flow/json";
 import { durationForVoiceover } from "./speech-text";
@@ -94,6 +94,73 @@ export function applyBoard(script: Script, raw: unknown): Script {
   };
 }
 
+function jsonStringField(raw: string, key: string): string {
+  const m = raw.match(new RegExp(`"${key}"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"`));
+  return m ? m[1]!.replace(/\\n/g, "\n").replace(/\\"/g, '"') : "";
+}
+
+export function formatScriptCopy(script: Script): string {
+  const lines = [`钩子：${script.hook}`];
+  script.shots.forEach((shot, i) => {
+    lines.push(`镜${i + 1}「${shot.onScreenText || `镜 ${i + 1}`}」${shot.voiceover}`);
+  });
+  if (script.cta) lines.push(`结尾：${script.cta}`);
+  return lines.join("\n");
+}
+
+export function formatScriptBoard(script: Script): string {
+  return script.shots
+    .map((shot, i) => {
+      const title = shot.onScreenText || `镜 ${i + 1}`;
+      const scene = shot.imagePrompt || shot.scene;
+      return `镜${i + 1}「${title}」\n${scene}`;
+    })
+    .join("\n\n");
+}
+
+export function formatCopyDraft(raw: string): string {
+  const hook = jsonStringField(raw, "hook");
+  const cta = jsonStringField(raw, "cta");
+  const shotBlocks = [...raw.matchAll(/\{[^{}]*\}/g)];
+  const shots = shotBlocks
+    .map((block) => {
+      const onScreenText = jsonStringField(block[0], "onScreenText");
+      const voiceover = jsonStringField(block[0], "voiceover");
+      if (!onScreenText && !voiceover) return "";
+      return `「${onScreenText || "这一镜"}」${voiceover}`;
+    })
+    .filter(Boolean);
+  const lines: string[] = [];
+  if (hook) lines.push(`钩子：${hook}`);
+  shots.forEach((line, i) => lines.push(`镜${i + 1}${line}`));
+  if (cta) lines.push(`结尾：${cta}`);
+  return lines.join("\n") || raw.replace(/[{}"\[\],]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+export function formatBoardDraft(raw: string): string {
+  const shotBlocks = [...raw.matchAll(/\{[^{}]*\}/g)];
+  const shots = shotBlocks
+    .map((block, i) => {
+      const scene = jsonStringField(block[0], "scene");
+      const imagePrompt = jsonStringField(block[0], "imagePrompt");
+      if (!scene && !imagePrompt) return "";
+      return `镜${i + 1}「${scene || `镜 ${i + 1}`}」\n${imagePrompt || scene}`;
+    })
+    .filter(Boolean);
+  return shots.join("\n\n") || raw.replace(/[{}"\[\],]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+async function emitDraft(text: string, onDelta?: (draft: string) => void | Promise<void>, format?: (raw: string) => string) {
+  if (!onDelta) return;
+  const formatted = format ? format(text) : text;
+  const step = Math.max(10, Math.ceil(formatted.length / 16));
+  for (let i = step; i < formatted.length; i += step) {
+    await onDelta(formatted.slice(0, i));
+    await new Promise((r) => setTimeout(r, 16));
+  }
+  await onDelta(formatted);
+}
+
 export const MOCK_SCRIPT: Script = parseScript(
   {
     hook: "你不用出镜，也能天天发口播",
@@ -114,10 +181,15 @@ export async function generateCopy(input: {
   idea: string;
   durationSec: number;
   aspect: string;
+  onDelta?: (draft: string) => void | Promise<void>;
 }): Promise<Script> {
   const plan = planBoard(input.durationSec);
-  if (isFlowMock()) return parseScript(MOCK_SCRIPT, { targetDurationSec: plan.durationSec });
-  const content = await flowChat({
+  if (isFlowMock()) {
+    const script = parseScript(MOCK_SCRIPT, { targetDurationSec: plan.durationSec });
+    await emitDraft(formatScriptCopy(script), input.onDelta);
+    return script;
+  }
+  const content = await flowChatStream({
     model: getScriptModel(),
     kind: "文案",
     maxTokens: 2500,
@@ -127,21 +199,37 @@ export async function generateCopy(input: {
       `口播要讲：${input.idea}`,
       "现在只写文案，不要写图片分镜。",
     ].join("\n"),
+    onDelta: async (raw) => {
+      await input.onDelta?.(formatCopyDraft(raw));
+    },
   });
-  return parseScript(content, { targetDurationSec: plan.durationSec });
+  const script = parseScript(content, { targetDurationSec: plan.durationSec });
+  await input.onDelta?.(formatScriptCopy(script));
+  return script;
 }
 
 export async function generateBoard(input: {
   script: Script;
   look: string;
   aspect: string;
+  onDelta?: (draft: string) => void | Promise<void>;
 }): Promise<Script> {
-  if (isFlowMock()) return input.script;
+  if (isFlowMock()) {
+    const script = applyBoard(input.script, {
+      shots: input.script.shots.map((shot, i) => ({
+        scene: MOCK_SCRIPT.shots[i]?.scene || shot.scene || `场景 ${i + 1}`,
+        imagePrompt: MOCK_SCRIPT.shots[i]?.imagePrompt || shot.imagePrompt || `电影大片场景 ${i + 1}`,
+        motion: MOCK_SCRIPT.shots[i]?.motion || shot.motion,
+      })),
+    });
+    await emitDraft(formatScriptBoard(script), input.onDelta);
+    return script;
+  }
   const look = input.look.trim() || DEFAULT_CINEMA_LOOK;
   const locked = input.script.shots
     .map((s, i) => `${i + 1}. 屏幕字：${s.onScreenText}；口播：${s.voiceover}`)
     .join("\n");
-  const content = await flowChat({
+  const content = await flowChatStream({
     model: getScriptModel(),
     kind: "分镜",
     maxTokens: 3500,
@@ -149,13 +237,18 @@ export async function generateBoard(input: {
     user: [
       `画幅：${input.aspect}。强制电影大片。气质补充：${look}`,
       CINEMA_STILL_LOCK,
-      "已定文案，按顺序补画面，不要改口播和屏幕字：",
+      "已定文案，按顺序补画面描述，不要出图，不要改口播和屏幕字：",
       locked,
-      "图片分镜必须服从电影大片要求，并且每镜都是同一人物。",
+      "图片分镜必须是文字风景/场景/构图描述，服从电影大片要求，并且每镜都是同一人物。",
       "这是口播短视频：口播是画外音，画面里的人不要对镜头张嘴主持。",
     ].join("\n"),
+    onDelta: async (raw) => {
+      await input.onDelta?.(formatBoardDraft(raw));
+    },
   });
-  return applyBoard(input.script, content);
+  const script = applyBoard(input.script, content);
+  await input.onDelta?.(formatScriptBoard(script));
+  return script;
 }
 
 export async function generateScript(input: {

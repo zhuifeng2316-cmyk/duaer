@@ -7,8 +7,7 @@ import { assertPhoto, extForMime, MAX_PHOTOS } from "@/lib/photos";
 import { startProduce } from "@/lib/pipeline";
 import { createProject, projectDir, projectFile, updateProject, writeProjectFile } from "@/lib/store";
 import { publicProject } from "@/lib/types";
-import { assertVoice, extForVoiceMime, parseVoiceName } from "@/lib/voice";
-import { bindVoiceSample, createVoice, readVoice, setLastVoiceId } from "@/lib/voice-store";
+import { bindVoiceSample, readVoice, setLastVoiceId } from "@/lib/voice-store";
 
 export async function POST(req: Request) {
   try {
@@ -40,14 +39,9 @@ export async function POST(req: Request) {
     let voiceId = String(form.get("voiceId") || "").trim() || null;
     const voiceUpload = form.get("voice");
     if (voiceUpload instanceof File && voiceUpload.size > 0) {
-      assertVoice(voiceUpload);
-      const created = await createVoice({
-        name: parseVoiceName(String(form.get("voiceName") || voiceUpload.name.replace(/\.[^.]+$/, ""))),
-        data: Buffer.from(await voiceUpload.arrayBuffer()),
-        ext: extForVoiceMime(voiceUpload.type || voiceUpload.name),
-      });
-      voiceId = created.id;
-    } else if (voiceId) {
+      return NextResponse.json({ error: "音色请先在线录音保存，再点选" }, { status: 400 });
+    }
+    if (voiceId) {
       const existing = await readVoice(voiceId);
       if (!existing) {
         return NextResponse.json({ error: "音色不存在" }, { status: 400 });

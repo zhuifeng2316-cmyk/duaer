@@ -70,15 +70,32 @@ function asText(value: unknown): string {
 }
 
 export function extractChatContent(data: {
-  choices?: { message?: { content?: unknown }; text?: unknown }[];
+  choices?: { message?: { content?: unknown }; delta?: { content?: unknown }; text?: unknown }[];
   output_text?: unknown;
 }): string {
   const choice = data.choices?.[0];
   const primary = asText(choice?.message?.content).trim();
   if (primary) return primary;
+  const delta = asText(choice?.delta?.content);
+  if (delta) return delta;
   const choiceText = asText(choice?.text).trim();
   if (choiceText) return choiceText;
   return asText(data.output_text).trim();
+}
+
+export function extractStreamDelta(raw: string): string {
+  const line = raw.trim();
+  if (!line || line === "[DONE]") return "";
+  const payload = line.startsWith("data:") ? line.slice(5).trim() : line;
+  if (!payload || payload === "[DONE]") return "";
+  try {
+    const data = JSON.parse(payload) as {
+      choices?: { delta?: { content?: unknown }; message?: { content?: unknown } }[];
+    };
+    return extractChatContent(data);
+  } catch {
+    return "";
+  }
 }
 
 export function extractImageDataUrl(content: unknown): string | null {

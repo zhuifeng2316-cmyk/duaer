@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MOCK_SCRIPT, applyBoard, buildBoardSystem, buildCopySystem, parseScript } from "./copy";
+import { MOCK_SCRIPT, applyBoard, buildBoardSystem, buildCopySystem, formatCopyDraft, parseScript } from "./copy";
 import { cloneImagePrompt } from "./flow/image";
 
 describe("copy script", () => {
@@ -46,6 +46,12 @@ describe("copy script", () => {
     expect(s.shots[0]?.durationSec).toBe(3);
     expect(s.shots[0]?.motion).toBe("punch");
     expect(s.shots[0]?.imagePrompt).toMatch(/雨夜/);
+  });
+
+  it("turns partial json into readable copy while streaming", () => {
+    const draft = formatCopyDraft(`{"hook":"你不用出镜","shots":[{"onScreenText":"看这里","voiceover":"今晚就能发"}]`);
+    expect(draft).toMatch(/钩子：你不用出镜/);
+    expect(draft).toMatch(/今晚就能发/);
   });
 
   it("keeps the mock script usable", () => {

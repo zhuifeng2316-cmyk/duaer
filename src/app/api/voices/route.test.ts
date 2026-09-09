@@ -9,7 +9,7 @@ describe("voices API", () => {
     const res = await POST(new Request("http://local/api/voices", { method: "POST", body: form }));
     expect(res.status).toBe(400);
     const data = await res.json();
-    expect(data.error).toMatch(/说话录音/);
+    expect(data.error).toMatch(/先录/);
   });
 
   it("rejects a non-audio sample", async () => {
@@ -23,7 +23,7 @@ describe("voices API", () => {
   it("saves a voice and lists it", async () => {
     const form = new FormData();
     form.set("name", "测试音色");
-    form.append("voice", new File([new Uint8Array([1, 2, 3, 4])], "me.mp3", { type: "audio/mpeg" }));
+    form.append("voice", new File([new Uint8Array([1, 2, 3, 4])], "me.webm", { type: "audio/webm" }));
     const res = await POST(new Request("http://local/api/voices", { method: "POST", body: form }));
     expect(res.status).toBe(200);
     const created = await res.json();

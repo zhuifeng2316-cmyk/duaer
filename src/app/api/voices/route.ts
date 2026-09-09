@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     const form = await req.formData();
     const file = form.get("voice");
     if (!(file instanceof File) || file.size === 0) {
-      return NextResponse.json({ error: "先上传一段说话录音" }, { status: 400 });
+      return NextResponse.json({ error: "先录一段说话" }, { status: 400 });
     }
     assertVoice(file);
     const voice = await createVoice({

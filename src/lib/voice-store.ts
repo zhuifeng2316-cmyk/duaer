@@ -2,6 +2,7 @@ import { copyFile, mkdir, rm, writeFile } from "fs/promises";
 import path from "path";
 import { v4 as uuid } from "uuid";
 import { MAX_VOICES } from "./voice";
+import { transcodeVoiceToWav } from "./voice-audio";
 import { deleteVoiceRow, kvGet, kvSet, selectVoice, selectVoices, upsertVoice } from "./sqlite";
 
 export type VoiceClone = {
@@ -32,7 +33,7 @@ export function publicVoice(v: VoiceClone) {
     id: v.id,
     name: v.name,
     createdAt: v.createdAt,
-    sampleUrl: `/api/voices/${v.id}/media`,
+    sampleUrl: `/api/voices/${v.id}/media?f=${encodeURIComponent(v.sample)}`,
   };
 }
 
@@ -63,7 +64,8 @@ export async function createVoice(input: {
     throw new Error(`克隆音色最多 ${MAX_VOICES} 条`);
   }
   const id = uuid();
-  const sample = `sample.${input.ext}`;
+  const normalized = await transcodeVoiceToWav(input.data, input.ext);
+  const sample = `sample.${normalized.ext}`;
   const voice: VoiceClone = {
     id,
     name: input.name,
@@ -71,7 +73,7 @@ export async function createVoice(input: {
     sample,
   };
   await mkdir(voiceDir(id), { recursive: true });
-  await writeFile(voiceFile(id, sample), input.data);
+  await writeFile(voiceFile(id, sample), normalized.data);
   upsertVoice(voice);
   await writeVoiceMeta({ lastVoiceId: id });
   return voice;

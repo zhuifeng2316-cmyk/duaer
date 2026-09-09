@@ -41,6 +41,7 @@ export async function createProject(input: {
     stills: [],
     htmlPath: null,
     script: null,
+    draftText: "",
     status: "queued",
     phase: "idle",
     progress: 0,

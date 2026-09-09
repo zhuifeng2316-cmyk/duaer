@@ -1,6 +1,6 @@
 import type { Aspect, Motion } from "./aspect";
 
-export type ProjectStatus = "queued" | "running" | "ready" | "failed";
+export type ProjectStatus = "queued" | "running" | "review" | "ready" | "failed";
 
 export type Shot = {
   scene: string;
@@ -31,6 +31,7 @@ export type Project = {
   stills: string[];
   htmlPath: string | null;
   script: Script | null;
+  draftText: string;
   status: ProjectStatus;
   phase: string;
   progress: number;
@@ -55,6 +56,7 @@ export function publicProject(p: Project) {
     stills: p.stills,
     htmlPath: p.htmlPath ?? null,
     script: p.script,
+    draftText: p.draftText || "",
     status: p.status,
     phase: p.phase,
     progress: p.progress,
