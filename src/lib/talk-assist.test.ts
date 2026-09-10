@@ -5,9 +5,12 @@ import {
   buildTalkAssistSystem,
   captionCatalogForPrompt,
   extractCaptionRecommendations,
+  extractGraphicRecommendations,
+  graphicCatalogForPrompt,
   mockTalkAssistReply,
   sectionShotIndex,
 } from "./talk-assist";
+import { houseLabelList } from "./talk-assist-shared";
 import type { Project } from "./types";
 
 const sample = {
@@ -18,6 +21,7 @@ const sample = {
     hook: "人到中年，别再为难自己。",
     cta: "今晚照顾好自己",
     musicPrompt: "",
+    visualMode: "story",
     shots: [
       {
         scene: "窗边",
@@ -78,6 +82,21 @@ describe("talk assist", () => {
     expect(system).not.toMatch(/DeepSeek|GPT|方舟|HyperFrames/i);
   });
 
+  it("puts house component labels into the system catalog", () => {
+    const catalog = graphicCatalogForPrompt("story");
+    expect(catalog).toMatch(/故事口播/);
+    expect(catalog).toMatch(/画面块/);
+    expect(catalog).toMatch(/叠层/);
+    const system = buildTalkAssistSystem(sample);
+    expect(system).toContain(catalog);
+    expect(system).toMatch(/组件目录/);
+    const labels = houseLabelList().filter((name) => catalog.includes(`- ${name}`));
+    expect(labels.length).toBeGreaterThan(50);
+    for (const label of labels.slice(0, 30)) {
+      expect(catalog).toContain(`- ${label}`);
+    }
+  });
+
   it("mocks caption recommendations with real catalog names and shot context", () => {
     const reply = mockTalkAssistReply("有哪些字幕推荐？");
     expect(reply).toMatch(/砸字/);
@@ -92,5 +111,16 @@ describe("talk assist", () => {
     const highlight = recs.find((r) => r.label === "划重点");
     expect(highlight?.section).toBe("mid");
     expect(highlight?.shotIndex).toBe(sectionShotIndex("mid", 3));
+  });
+
+  it("mocks graphic recommendations with real house labels", () => {
+    const reply = mockTalkAssistReply("有哪些组件推荐？");
+    expect(reply).toMatch(/闪白|漏光|手写标题|胶片颗粒/);
+    const gfx = extractGraphicRecommendations(reply, 3);
+    expect(gfx.length).toBeGreaterThan(0);
+    expect(gfx.every((row) => houseLabelList().includes(row.label))).toBe(true);
+    expect(gfx.some((row) => row.label === "闪白" || row.label === "漏光")).toBe(true);
+    const flash = gfx.find((row) => row.label === "闪白");
+    expect(flash?.shotIndex).toBe(0);
   });
 });

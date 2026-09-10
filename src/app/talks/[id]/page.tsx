@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import type { CaptionRecommendation } from "@/lib/talk-assist";
+import type { CaptionRecommendation, GraphicRecommendation } from "@/lib/talk-assist-shared";
 import { TalkAssistPanel } from "../../talk-assist";
 import { TalkWorkspace } from "../../talk-workspace";
 import type { AssistShotPreview } from "../../assist-caption-recs";
@@ -16,13 +16,18 @@ function posterClass(aspect: string): string {
   return styles.tall;
 }
 
+export type AssistApplyFocus = { kind: "shot" | "all"; shotIndex?: number; tick: number };
+
 export default function TalkDetailPage() {
   const params = useParams();
   const id = String(params?.id || "");
   const [recommendations, setRecommendations] = useState<CaptionRecommendation[]>([]);
+  const [graphics, setGraphics] = useState<GraphicRecommendation[]>([]);
   const [shots, setShots] = useState<AssistShotPreview[]>([]);
   const [aspect, setAspect] = useState("9:16");
-  const [refreshTick, setRefreshTick] = useState(0);
+  const [projectTick, setProjectTick] = useState(0);
+  const [applyFocus, setApplyFocus] = useState<AssistApplyFocus | null>(null);
+  const [projectPatch, setProjectPatch] = useState<unknown>(null);
 
   const loadShots = useCallback(async () => {
     if (!id) return;
@@ -55,9 +60,15 @@ export default function TalkDetailPage() {
 
   useEffect(() => {
     void loadShots();
-  }, [loadShots, refreshTick]);
+  }, [loadShots]);
 
   const frameClass = useMemo(() => posterClass(aspect), [aspect]);
+
+  function handleApplied(target: { kind: "shot" | "all"; shotIndex?: number }, project?: unknown) {
+    if (project) setProjectPatch({ project, tick: Date.now() });
+    setProjectTick((n) => n + 1);
+    setApplyFocus({ ...target, tick: Date.now() });
+  }
 
   if (!id) {
     return (
@@ -74,8 +85,10 @@ export default function TalkDetailPage() {
           <TalkAssistPanel
             talkId={id}
             recommendations={recommendations}
+            graphics={graphics}
             onRecommendations={setRecommendations}
-            onApplied={() => setRefreshTick((n) => n + 1)}
+            onGraphics={setGraphics}
+            onApplied={handleApplied}
             shots={shots}
             frameClass={frameClass}
           />
@@ -84,10 +97,13 @@ export default function TalkDetailPage() {
           <TalkWorkspace
             talkId={id}
             assistRecommendations={recommendations}
+            assistGraphics={graphics}
             assistShots={shots}
             assistFrameClass={frameClass}
-            assistRefreshTick={refreshTick}
-            onAssistApply={() => setRefreshTick((n) => n + 1)}
+            assistRefreshTick={projectTick}
+            assistApplyFocus={applyFocus}
+            assistProjectPatch={projectPatch}
+            onAssistApply={handleApplied}
           />
         </div>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import type { Aspect } from "@/lib/aspect";
 import { COMPOSE_LAYOUT_LABEL, STILL_KIND_LABEL, type ComposeLayout, type StillKind } from "@/lib/compose-plan";
 import {
@@ -15,35 +15,28 @@ import { graphicLabel, isKnownGraphic, VISUAL_MODE_LABEL, type VisualMode } from
 import { LETTERING_MODE_LABEL, type LetteringMode } from "@/lib/skill-recipes";
 import {
   CARD_CAPTION_STYLES,
-  CARD_CHIP_PREVIEWS,
-  CARD_RAIL_PREVIEWS,
   FX_CAPTION_STYLES,
-  FX_CHIP_PREVIEWS,
-  FX_RAIL_PREVIEWS,
   FRAME_CAPTION_STYLES,
-  FRAME_PILL_PREVIEWS,
   HOUSE_CAPTION_STYLES,
   LOOK_CAPTION_STYLES,
-  LOOK_CHIP_PREVIEWS,
-  LOOK_RAIL_PREVIEWS,
   MOVE_CAPTION_STYLES,
-  MOVE_CHIP_PREVIEWS,
-  MOVE_RAIL_PREVIEWS,
   POP_CAPTION_STYLES,
-  POP_CHIP_PREVIEWS,
-  POP_RAIL_PREVIEWS,
-  PREVIEW_CHAR_SPLIT,
-  PREVIEW_SLAM_STACK,
-  captionPreviewTokens,
   captionStyleLabel,
   resolveCaptionStyle,
 } from "@/lib/caption-styles";
 import { COVER_TEMPLATES, coverTitle, parseCoverTemplate, wrapCoverTitle } from "@/lib/cover-templates";
 import type { PublicProject } from "@/lib/types";
 import { isProduceDockPhase, PRODUCE_STEPS, produceStepIndex } from "@/lib/talk-progress";
-import type { CaptionRecommendation } from "@/lib/talk-assist";
+import type { CaptionRecommendation, GraphicRecommendation } from "@/lib/talk-assist-shared";
 import { AssistCaptionRecCards } from "./assist-caption-recs";
+import { AssistGraphicRecCards } from "./assist-graphic-recs";
+import {
+  CaptionStylePreview,
+  CaptionStyleTile,
+  captionPreviewLines,
+} from "./caption-style-preview";
 import styles from "./page.module.css";
+
 
 type Shot = {
   scene: string;
@@ -211,325 +204,6 @@ function posterClass(aspect: Aspect): string {
   return styles.tall;
 }
 
-const CAPTION_PREVIEW_CLASS: Record<string, string> = {
-  slam: styles.capSlam,
-  editorial: styles.capEditorial,
-  weight: styles.capWeight,
-  highlight: styles.capHighlight,
-  wipe: styles.capWipe,
-  follow: styles.capFollow,
-  glitch: styles.capGlitch,
-  neon: styles.capNeon,
-  neonAccent: styles.capNeonAccent,
-  blend: styles.capBlend,
-  emoji: styles.capEmoji,
-  gradient: styles.capGradient,
-  matrix: styles.capMatrix,
-  parallax: styles.capParallax,
-  particle: styles.capParticle,
-  karaoke: styles.capKaraoke,
-  texture: styles.capTexture,
-  lookCream: styles.lookCream,
-  lookInk: styles.lookInk,
-  lookEditorial: styles.lookEditorial,
-  lookKeynote: styles.lookKeynote,
-  lookDocumentary: styles.lookDocumentary,
-  lookLoud: styles.lookLoud,
-  lookNeon: styles.lookNeon,
-  lookGlitch: styles.lookGlitch,
-  lookChrome: styles.lookChrome,
-  lookVelocity: styles.lookVelocity,
-  lookAnchor: styles.lookAnchor,
-  lookOrdnance: styles.lookOrdnance,
-  lookTerminal: styles.lookTerminal,
-  lookNeonsign: styles.lookNeonsign,
-  lookStardust: styles.lookStardust,
-  lookStomp: styles.lookStomp,
-  lookLastpage: styles.lookLastpage,
-  lookScoreboard: styles.lookScoreboard,
-  lookTransit: styles.lookTransit,
-  lookVhs: styles.lookVhs,
-  lookArcade: styles.lookArcade,
-  lookDossier: styles.lookDossier,
-  lookLaser: styles.lookLaser,
-  lookThunder: styles.lookThunder,
-  lookHologram: styles.lookHologram,
-  lookBiolume: styles.lookBiolume,
-  lookAurora: styles.lookAurora,
-  lookSpectrum: styles.lookSpectrum,
-  lookPapercut: styles.lookPapercut,
-  lookPopup: styles.lookPopup,
-  lookChalk: styles.lookChalk,
-  lookGraffiti: styles.lookGraffiti,
-  lookBrush: styles.lookBrush,
-  lookInkwater: styles.lookInkwater,
-  lookRansom: styles.lookRansom,
-  fxTypewriter: styles.fxTypewriter,
-  fxHwTitle: styles.fxHwTitle,
-  fxHwWrite: styles.fxHwWrite,
-  fxPath: styles.fxPath,
-  fxCloud: styles.fxCloud,
-  fxShimmer: styles.fxShimmer,
-  fxStream: styles.fxStream,
-  fxDrop: styles.fxDrop,
-  fxWhiteboard: styles.fxWhiteboard,
-  fxStitch: styles.fxStitch,
-  fxTicker: styles.fxTicker,
-  fxNotes: styles.fxNotes,
-  fxExplode: styles.fxExplode,
-  fxSlot: styles.fxSlot,
-  fxMorph: styles.fxMorph,
-  fxMarker: styles.fxMarker,
-  fxAnnotate: styles.fxAnnotate,
-  fxTiles: styles.fxTiles,
-  fxScan: styles.fxScan,
-  fxMarquee: styles.fxMarquee,
-  fxStrike: styles.fxStrike,
-  fxKinetic: styles.fxKinetic,
-  fxRise: styles.fxRise,
-  fxWave: styles.fxWave,
-  frameCoral: styles.frameCoral,
-  frameCapsule: styles.frameCapsule,
-  frameForest: styles.frameForest,
-  frameDaisy: styles.frameDaisy,
-  frameBroadside: styles.frameBroadside,
-  frameCreative: styles.frameCreative,
-  frameCobalt: styles.frameCobalt,
-  frameCode: styles.frameCode,
-  frameCartesian: styles.frameCartesian,
-  frameBlock: styles.frameBlock,
-  framePoster: styles.framePoster,
-  frameBlue: styles.frameBlue,
-  frameBiennale: styles.frameBiennale,
-  moveRgb: styles.moveRgb,
-  moveBlurUp: styles.moveBlurUp,
-  moveBottom: styles.moveBottom,
-  moveSoft: styles.moveSoft,
-  moveFocus: styles.moveFocus,
-  moveHeadline: styles.moveHeadline,
-  moveInline: styles.moveInline,
-  moveLines: styles.moveLines,
-  moveCrossfade: styles.moveCrossfade,
-  moveTracking: styles.moveTracking,
-  moveAxisY: styles.moveAxisY,
-  moveAxisZ: styles.moveAxisZ,
-  moveParticle: styles.moveParticle,
-  moveSweep: styles.moveSweep,
-  moveCallout: styles.moveCallout,
-  moveEmphasis: styles.moveEmphasis,
-  movePrism: styles.movePrism,
-  moveFeather: styles.moveFeather,
-  moveNews: styles.moveNews,
-  moveThird: styles.moveThird,
-  moveFlex: styles.moveFlex,
-  moveAscii: styles.moveAscii,
-  moveSwap: styles.moveSwap,
-  moveCode: styles.moveCode,
-  cardAcademic: styles.cardAcademic,
-  cardEditorial: styles.cardEditorial,
-  cardMinimal: styles.cardMinimal,
-  cardSpotlight: styles.cardSpotlight,
-  cardGeom: styles.cardGeom,
-  cardWhiteboard: styles.cardWhiteboard,
-  cardAudit: styles.cardAudit,
-  cardTerminal: styles.cardTerminal,
-  cardSwiss: styles.cardSwiss,
-  cardSocial: styles.cardSocial,
-  popScramble: styles.popScramble,
-  popStagger: styles.popStagger,
-  popTexture: styles.popTexture,
-  popCount: styles.popCount,
-  popLineSwap: styles.popLineSwap,
-  popBlurIn: styles.popBlurIn,
-  popPage: styles.popPage,
-  popMatch: styles.popMatch,
-  popFlap: styles.popFlap,
-  popCursor: styles.popCursor,
-  popFlash: styles.popFlash,
-  popUnderline: styles.popUnderline,
-  popWhite: styles.popWhite,
-  popState: styles.popState,
-  popDots: styles.popDots,
-  popHalftone: styles.popHalftone,
-};
-
-export function captionPreviewLines(text: string): string[] {
-  const cleaned = (text || "口播字").replace(/[，。！？、：；…—,.!?;:“”"'‘’\s]+/g, "").slice(0, 12);
-  return wrapCoverTitle(cleaned || "口播字");
-}
-
-export function CaptionStylePreview({
-  preview,
-  lines,
-  onBoard,
-}: {
-  preview: string;
-  lines: string[];
-  onBoard?: boolean;
-}) {
-  const joined = lines.join("");
-  const title = lines.map((line, i) => (
-    <span key={`${line}-${i}`}>
-      {line}
-      {i < lines.length - 1 ? <br /> : null}
-    </span>
-  ));
-  const chips =
-    LOOK_CHIP_PREVIEWS.has(preview) ||
-    FX_CHIP_PREVIEWS.has(preview) ||
-    MOVE_CHIP_PREVIEWS.has(preview) ||
-    CARD_CHIP_PREVIEWS.has(preview) ||
-    POP_CHIP_PREVIEWS.has(preview) ||
-    preview === "highlight";
-  const slamStack = PREVIEW_SLAM_STACK.has(preview);
-  const charSplit = PREVIEW_CHAR_SPLIT.has(preview);
-  let body: ReactNode;
-  if (chips) {
-    body = (
-      <div className={styles.capHighlightRow}>
-        {lines.map((line, i) => (
-          <span key={`${line}-${i}`}>{line}</span>
-        ))}
-      </div>
-    );
-  } else if (slamStack) {
-    const tokens = captionPreviewTokens(joined, "stack");
-    const step = 2 / Math.max(tokens.length, 1);
-    body = (
-      <p className={styles.capMotStack}>
-        {tokens.map((token, i) => (
-          <span key={`${token}-${i}`} className={styles.capMotSlamUnit} style={{ animationDelay: `${i * step}s` }}>
-            {token}
-          </span>
-        ))}
-      </p>
-    );
-  } else if (charSplit) {
-    const chars = captionPreviewTokens(joined, "chars");
-    const unitClass =
-      preview === "weight" || preview === "fxWave" || preview === "moveFlex" || preview === "popState"
-        ? styles.capMotWeightUnit
-        : preview === "fxTypewriter" || preview === "moveCode" || preview === "moveEmphasis" || preview === "popCursor" || preview === "fxNotes"
-          ? styles.capMotTypeUnit
-          : preview === "glitch" || preview === "lookGlitch" || preview === "moveRgb" || preview === "popScramble"
-            ? styles.capMotGlitchUnit
-            : preview === "fxExplode"
-              ? styles.capMotBurstUnit
-              : styles.capMotCharUnit;
-    body = (
-      <p className={styles.capMotChars}>
-        {chars.map((ch, i) => (
-          <span key={`${ch}-${i}`} className={unitClass} style={{ animationDelay: `${i * 0.1}s` }}>
-            {ch}
-          </span>
-        ))}
-      </p>
-    );
-  } else if (preview === "karaoke") {
-    body = (
-      <p>
-        <em>{joined}</em>
-      </p>
-    );
-  } else if (preview === "emoji") {
-    body = (
-      <p>
-        {title} <i>✦</i>
-      </p>
-    );
-  } else if (preview === "fxStrike") {
-    body = (
-      <p>
-        <s>{lines[0]}</s> {lines.slice(1).join("") || "新词"}
-      </p>
-    );
-  } else if (preview === "popDots") {
-    body = (
-      <p>
-        {title}
-        <i className={styles.popDot}>·</i>
-        <i className={styles.popDot}>·</i>
-        <i className={styles.popDot}>·</i>
-      </p>
-    );
-  } else {
-    body = <p>{title}</p>;
-  }
-  const rail =
-    LOOK_RAIL_PREVIEWS.has(preview) ||
-    FX_RAIL_PREVIEWS.has(preview) ||
-    FRAME_PILL_PREVIEWS.has(preview) ||
-    MOVE_RAIL_PREVIEWS.has(preview) ||
-    CARD_RAIL_PREVIEWS.has(preview) ||
-    POP_RAIL_PREVIEWS.has(preview);
-  return (
-    <div
-      className={`${styles.coverLetter} ${onBoard ? styles.capBoard : ""} ${CAPTION_PREVIEW_CLASS[preview] || styles.capEditorial}`}
-      aria-hidden
-    >
-      {rail ? <div className={styles.capLookRail}>{body}</div> : body}
-    </div>
-  );
-}
-
-const COVER_PREVIEW_CLASS: Record<string, string> = {
-  lockup: styles.coverLockup,
-  calm: styles.coverCalm,
-  slam: styles.coverSlam,
-  cta: styles.coverCta,
-  scramble: styles.coverScramble,
-  magazine: styles.coverMagazine,
-  neon: styles.coverNeon,
-  glitch: styles.coverGlitch,
-  hand: styles.coverHand,
-  stamp: styles.coverStamp,
-};
-
-export function CaptionStyleTile({
-  id,
-  label,
-  preview,
-  lines,
-  stillSrc,
-  frameClass,
-  selected,
-  disabled,
-  onPick,
-}: {
-  id: string;
-  label: string;
-  preview: string;
-  lines: string[];
-  stillSrc: string;
-  frameClass: string;
-  selected: boolean;
-  disabled: boolean;
-  onPick: (id: string) => void;
-}) {
-  return (
-    <button
-      className={selected ? `${styles.coverThumb} ${styles.coverThumbOn}` : styles.coverThumb}
-      type="button"
-      aria-pressed={selected}
-      disabled={disabled}
-      onClick={() => onPick(id)}
-    >
-      <span className={`${styles.coverThumbFrame} ${frameClass}`}>
-        {stillSrc ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={stillSrc} alt="" />
-        ) : (
-          <span className={styles.waiting}>
-            <small>预览</small>
-          </span>
-        )}
-        <CaptionStylePreview preview={preview} lines={lines} />
-      </span>
-      <span className={styles.coverThumbLabel}>{label}</span>
-    </button>
-  );
-}
-
 function CoverStylePreview({
   preview,
   lines,
@@ -562,17 +236,23 @@ function CoverStylePreview({
 export function TalkWorkspace({
   talkId,
   assistRecommendations = [],
+  assistGraphics = [],
   assistShots = [],
   assistFrameClass = "",
   assistRefreshTick = 0,
+  assistApplyFocus = null,
+  assistProjectPatch = null,
   onAssistApply,
 }: {
   talkId: string;
   assistRecommendations?: CaptionRecommendation[];
+  assistGraphics?: GraphicRecommendation[];
   assistShots?: { stillUrl: string; text: string }[];
   assistFrameClass?: string;
   assistRefreshTick?: number;
-  onAssistApply?: () => void;
+  assistApplyFocus?: { kind: "shot" | "all"; shotIndex?: number; tick: number } | null;
+  assistProjectPatch?: { project?: unknown; tick?: number } | unknown | null;
+  onAssistApply?: (target: { kind: "shot" | "all"; shotIndex?: number }, project?: unknown) => void;
 }) {
   const [project, setProject] = useState<PublicProject | null>(null);
   const [error, setError] = useState("");
@@ -588,6 +268,8 @@ export function TalkWorkspace({
   const [graphicBusy, setGraphicBusy] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [missing, setMissing] = useState(false);
+  const [assistAppliedKey, setAssistAppliedKey] = useState("");
+  const [assistAppliedGfxKey, setAssistAppliedGfxKey] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -606,6 +288,28 @@ export function TalkWorkspace({
       cancelled = true;
     };
   }, [talkId, assistRefreshTick]);
+
+  useEffect(() => {
+    if (!assistApplyFocus?.tick) return;
+    const timer = window.setTimeout(() => {
+      if (assistApplyFocus.kind === "shot" && typeof assistApplyFocus.shotIndex === "number") {
+        document.getElementById(`talk-shot-${assistApplyFocus.shotIndex}`)?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+        return;
+      }
+      document.getElementById("talk-still-wall")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [assistApplyFocus]);
+
+  useEffect(() => {
+    const patch = assistProjectPatch as { project?: PublicProject; tick?: number } | PublicProject | null;
+    if (!patch) return;
+    const next = "project" in patch && patch.project ? patch.project : (patch as PublicProject);
+    if (next && typeof next === "object" && "id" in next) setProject(next);
+  }, [assistProjectPatch]);
 
   useEffect(() => {
     if (project?.coverTemplate) setCoverTemplate(parseCoverTemplate(project.coverTemplate));
@@ -767,6 +471,37 @@ export function TalkWorkspace({
     }
   }
 
+  async function applyAssistGraphic(rec: GraphicRecommendation, target: "shot" | "all") {
+    if (!project) return;
+    setGraphicBusy(true);
+    setError("");
+    try {
+      const body =
+        target === "shot" && typeof rec.shotIndex === "number"
+          ? { label: rec.label, shotIndex: rec.shotIndex }
+          : { label: rec.label };
+      const res = await fetch(`/api/projects/${project.id}/assist-graphic`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "组件没换上");
+      if (data.project) setProject(data.project);
+      setAssistAppliedGfxKey(`${rec.wraps}:${target}:${rec.shotIndex ?? "all"}`);
+      onAssistApply?.(
+        target === "shot" && typeof rec.shotIndex === "number"
+          ? { kind: "shot", shotIndex: rec.shotIndex }
+          : { kind: "all" },
+        data.project,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "组件没换上");
+    } finally {
+      setGraphicBusy(false);
+    }
+  }
+
   async function applyAssistCaption(rec: CaptionRecommendation, target: "shot" | "all") {
     if (!project) return;
     setCaptionBusy(true);
@@ -784,7 +519,13 @@ export function TalkWorkspace({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "字幕没换上");
       if (data.project) setProject(data.project);
-      onAssistApply?.();
+      setAssistAppliedKey(`${rec.id}:${target}:${rec.shotIndex ?? "all"}`);
+      onAssistApply?.(
+        target === "shot" && typeof rec.shotIndex === "number"
+          ? { kind: "shot", shotIndex: rec.shotIndex }
+          : { kind: "all" },
+        data.project,
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "字幕没换上");
     } finally {
@@ -865,26 +606,54 @@ export function TalkWorkspace({
   return (
     <section className={styles.talkWork}>
       <div className={styles.panel}>
-        {assistRecommendations.length ? (
-          <div className={styles.assistStageRecs} aria-label="助手字幕预览">
-            <div className={styles.assistStageHead}>
-              <p className={styles.assistStageTitle}>助手推荐样式</p>
-              <p className={styles.assistStageLede}>叠在对应故事片上预览，可只用这一镜或用到全片</p>
-            </div>
-            <AssistCaptionRecCards
-              recommendations={assistRecommendations}
-              shots={
-                assistShots.length
-                  ? assistShots
-                  : (project?.script?.shots || []).map((shot, i) => ({
-                      stillUrl: project?.stillUrls[i] || "",
-                      text: shot.onScreenText || shot.voiceover || project?.idea || "口播字",
-                    }))
-              }
-              frameClass={assistFrameClass || posterClass(project?.aspect || "9:16")}
-              busy={captionBusy || producing}
-              onApply={(rec, target) => void applyAssistCaption(rec, target)}
-            />
+        {assistRecommendations.length || assistGraphics.length ? (
+          <div className={styles.assistStageRecs} aria-label="助手推荐预览">
+            {assistRecommendations.length ? (
+              <>
+                <div className={styles.assistStageHead}>
+                  <p className={styles.assistStageTitle}>助手推荐字幕</p>
+                  <p className={styles.assistStageLede}>叠在对应故事片上预览，可只用这一镜或用到全片</p>
+                </div>
+                <AssistCaptionRecCards
+                  recommendations={assistRecommendations}
+                  shots={
+                    assistShots.length
+                      ? assistShots
+                      : (project?.script?.shots || []).map((shot, i) => ({
+                          stillUrl: project?.stillUrls[i] || "",
+                          text: shot.onScreenText || shot.voiceover || project?.idea || "口播字",
+                        }))
+                  }
+                  frameClass={assistFrameClass || posterClass(project?.aspect || "9:16")}
+                  busy={captionBusy || producing}
+                  appliedKey={assistAppliedKey}
+                  onApply={(rec, target) => void applyAssistCaption(rec, target)}
+                />
+              </>
+            ) : null}
+            {assistGraphics.length ? (
+              <>
+                <div className={styles.assistStageHead}>
+                  <p className={styles.assistStageTitle}>助手推荐组件</p>
+                  <p className={styles.assistStageLede}>叠在对应故事片上预览，可只用这一镜或用到各镜</p>
+                </div>
+                <AssistGraphicRecCards
+                  recommendations={assistGraphics}
+                  shots={
+                    assistShots.length
+                      ? assistShots
+                      : (project?.script?.shots || []).map((shot, i) => ({
+                          stillUrl: project?.stillUrls[i] || "",
+                          text: shot.onScreenText || shot.voiceover || project?.idea || "口播字",
+                        }))
+                  }
+                  frameClass={assistFrameClass || posterClass(project?.aspect || "9:16")}
+                  busy={graphicBusy || producing}
+                  appliedKey={assistAppliedGfxKey}
+                  onApply={(rec, target) => void applyAssistGraphic(rec, target)}
+                />
+              </>
+            ) : null}
           </div>
         ) : null}
         <p className={styles.talkIdea}>{project.idea}</p>
@@ -1185,6 +954,7 @@ export function TalkWorkspace({
           ) : null
         ) : (
           <div
+            id="talk-still-wall"
             className={`${styles.wall} ${
               project.aspect === "16:9" || project.aspect === "4:3"
                 ? styles.wallWide
@@ -1203,7 +973,7 @@ export function TalkWorkspace({
               const canRedo =
                 Boolean(src) && (reviewingStills || project.status === "ready") && !producing && !regening;
               return (
-                <figure key={src || `slot-${i}`} className={styles.poster}>
+                <figure key={src || `slot-${i}`} id={`talk-shot-${i}`} className={styles.poster}>
                   <div className={`${styles.frame} ${posterClass(project.aspect)}${cap && frameSrc ? ` ${styles.capStill}` : ""}`}>
                     {frameSrc ? (
                       // eslint-disable-next-line @next/next/no-img-element

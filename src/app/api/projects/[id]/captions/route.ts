@@ -36,7 +36,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   }
   const next =
     shotIndex == null
-      ? { captionStyle: style }
+      ? {
+          captionStyle: style,
+          script: {
+            ...project.script,
+            // 用到全片时清掉单镜覆盖，否则画面上仍显示旧的分镜字幕
+            shots: project.script.shots.map((shot) => ({ ...shot, captionStyle: "" })),
+          },
+        }
       : {
           script: {
             ...project.script,

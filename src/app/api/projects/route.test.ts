@@ -12,6 +12,7 @@ import { POST as regenStill } from "@/app/api/projects/[id]/regen/route";
 import { POST as editGraphic } from "@/app/api/projects/[id]/graphic/route";
 import { POST as editCaptions } from "@/app/api/projects/[id]/captions/route";
 import { POST as assistTalk } from "@/app/api/projects/[id]/assist/route";
+import { POST as assistGraphic } from "@/app/api/projects/[id]/assist-graphic/route";
 import { POST as retryTalk } from "@/app/api/projects/[id]/retry/route";
 import { MOCK_SCRIPT } from "@/lib/copy";
 import { makePlaceholderStill } from "@/lib/compose";
@@ -562,6 +563,7 @@ describe("projects API", () => {
     expect(all.status).toBe(200);
     const afterAll = (await all.json()).project;
     expect(afterAll.captionStyle).toBe("caption-neon-glow");
+    expect(afterAll.script.shots.every((shot: { captionStyle?: string }) => !shot.captionStyle)).toBe(true);
     const html = await readFile(projectFile(project.id, "compose/index.html"), "utf8");
     expect(html).toContain("cap-neon-glow");
 
@@ -672,5 +674,43 @@ describe("projects API", () => {
     expect(data.reply).toMatch(/砸字/);
     expect(data.recommendations.some((row: { label: string }) => row.label === "砸字")).toBe(true);
     expect(JSON.stringify(data)).not.toMatch(/DeepSeek|GPT|方舟/i);
+  });
+
+  it("answers graphic recommendations and can apply a house component to one shot", async () => {
+    process.env.FLOW_MOCK = "1";
+    const project = await createProject({ idea: "人到中年放过自己", look: "", aspect: "9:16", targetDurationSec: 15 });
+    htmlProjectIds.push(project.id);
+    await updateProject(project.id, {
+      script: { ...MOCK_SCRIPT, visualMode: "story" },
+      topic: "人到中年",
+      status: "review",
+      phase: "images",
+    });
+    const ask = await assistTalk(
+      new Request("http://local/api/projects/x/assist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [{ role: "user", content: "有哪些组件推荐？" }] }),
+      }),
+      { params: Promise.resolve({ id: project.id }) },
+    );
+    expect(ask.status).toBe(200);
+    const asked = await ask.json();
+    expect(asked.reply).toMatch(/闪白|漏光/);
+    expect(asked.graphics.some((row: { label: string }) => row.label === "闪白")).toBe(true);
+    expect(asked.recommendations || []).toEqual([]);
+
+    const apply = await assistGraphic(
+      new Request("http://local/api/projects/x/assist-graphic", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ label: "闪白", shotIndex: 0 }),
+      }),
+      { params: Promise.resolve({ id: project.id }) },
+    );
+    expect(apply.status).toBe(200);
+    const after = (await apply.json()).project;
+    expect(after.script.shots[0].graphicIntent).toBe("闪白");
+    expect(after.script.shots[0].overlay || after.script.shots[0].block).toBeTruthy();
   });
 });

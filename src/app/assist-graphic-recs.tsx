@@ -1,9 +1,7 @@
 "use client";
 
-import { captionStyleMeta } from "@/lib/caption-styles";
-import type { CaptionRecommendation } from "@/lib/talk-assist-shared";
+import type { GraphicRecommendation } from "@/lib/talk-assist-shared";
 import { recommendationShotLabel } from "@/lib/talk-assist-shared";
-import { CaptionStylePreview, captionPreviewLines } from "./caption-style-preview";
 import styles from "./page.module.css";
 
 export type AssistShotPreview = {
@@ -13,7 +11,17 @@ export type AssistShotPreview = {
 
 type ApplyTarget = "shot" | "all";
 
-export function AssistCaptionRecCards({
+function tagSkin(tags?: string[]): string {
+  const blob = (tags || []).join(" ");
+  if (/chart|data|graph/.test(blob)) return styles.assistGfxSkinChart;
+  if (/map/.test(blob)) return styles.assistGfxSkinMap;
+  if (/mock-ui|showcase|carousel|chat/.test(blob)) return styles.assistGfxSkinUi;
+  if (/handwritten|marker|checklist/.test(blob)) return styles.assistGfxSkinHand;
+  if (/caption|type|title/.test(blob)) return styles.assistGfxSkinType;
+  return styles.assistGfxSkinDefault;
+}
+
+export function AssistGraphicRecCards({
   recommendations,
   shots,
   frameClass,
@@ -22,34 +30,32 @@ export function AssistCaptionRecCards({
   appliedKey,
   onApply,
 }: {
-  recommendations: CaptionRecommendation[];
+  recommendations: GraphicRecommendation[];
   shots: AssistShotPreview[];
   frameClass: string;
   dense?: boolean;
   busy?: boolean;
   appliedKey?: string;
-  onApply: (rec: CaptionRecommendation, target: ApplyTarget) => void;
+  onApply: (rec: GraphicRecommendation, target: ApplyTarget) => void;
 }) {
   if (!recommendations.length) return null;
   return (
     <div className={dense ? styles.assistRecRow : styles.assistStageGrid}>
       {recommendations.map((rec) => {
-        const meta = captionStyleMeta(rec.id);
-        if (!meta) return null;
         const shot =
           typeof rec.shotIndex === "number" && rec.shotIndex >= 0
             ? shots[rec.shotIndex]
             : shots.find((row) => row.stillUrl) || shots[0];
         const stillSrc = shot?.stillUrl || "";
-        const lines = captionPreviewLines(shot?.text || "口播字");
         const shotLabel = recommendationShotLabel(rec, shots.length);
         const canShot = typeof rec.shotIndex === "number" && rec.shotIndex >= 0;
-        const shotKey = `${rec.id}:shot:${rec.shotIndex ?? "all"}`;
-        const allKey = `${rec.id}:all:${rec.shotIndex ?? "all"}`;
+        const shotKey = `${rec.wraps}:shot:${rec.shotIndex ?? "all"}`;
+        const allKey = `${rec.wraps}:all:${rec.shotIndex ?? "all"}`;
         const selected = appliedKey === shotKey || appliedKey === allKey;
+        const kindLabel = rec.kind === "block" ? "画面块" : "叠层";
         return (
           <article
-            key={`${rec.id}-${rec.shotIndex ?? "all"}`}
+            key={`${rec.wraps}-${rec.shotIndex ?? "all"}`}
             className={selected ? `${styles.assistStyleCard} ${styles.assistStyleCardOn}` : styles.assistStyleCard}
           >
             <div className={`${styles.coverThumbFrame} ${frameClass}`}>
@@ -61,10 +67,16 @@ export function AssistCaptionRecCards({
                   <small>预览</small>
                 </span>
               )}
-              <CaptionStylePreview preview={meta.preview} lines={lines} />
+              <div className={`${styles.assistGfxPreview} ${tagSkin(rec.tags)}`} aria-hidden>
+                <span className={styles.assistGfxKind}>{kindLabel}</span>
+                <p className={styles.assistGfxLabel}>{rec.label}</p>
+                {shot?.text ? <em className={styles.assistGfxHint}>{shot.text.slice(0, 16)}</em> : null}
+              </div>
             </div>
             <p className={styles.assistStyleName}>{rec.label}</p>
-            <p className={styles.assistStyleShot}>{shotLabel}</p>
+            <p className={styles.assistStyleShot}>
+              {shotLabel} · {kindLabel}
+            </p>
             <div className={styles.assistStyleActions}>
               {canShot ? (
                 <button type="button" className={styles.assistStyleBtn} disabled={busy} onClick={() => onApply(rec, "shot")}>
@@ -72,7 +84,7 @@ export function AssistCaptionRecCards({
                 </button>
               ) : null}
               <button type="button" className={styles.assistStyleBtnPrimary} disabled={busy} onClick={() => onApply(rec, "all")}>
-                用到全片
+                用到各镜
               </button>
             </div>
           </article>
