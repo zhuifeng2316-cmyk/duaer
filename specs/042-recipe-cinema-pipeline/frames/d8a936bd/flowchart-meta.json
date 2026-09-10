@@ -1,0 +1,11 @@
+{
+  "id": "d8a936bd-f108-4a15-9bb2-86dccc59e550",
+  "shot": 2,
+  "intent": "流程图",
+  "onScreen": "要不要学",
+  "tag": "flowchart",
+  "graphic": "flowchart-vertical",
+  "sample": 7.29,
+  "dest": "/Users/morgan/project/AIvideo/specs/042-recipe-cinema-pipeline/frames/d8a936bd/flowchart_7_29.jpg",
+  "vars": {}
+}

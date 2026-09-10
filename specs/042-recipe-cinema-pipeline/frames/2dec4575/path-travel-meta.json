@@ -1,0 +1,15 @@
+{
+  "id": "2dec4575-e23f-4fb5-a396-7875980496f8",
+  "shot": 1,
+  "intent": "路径游走",
+  "onScreen": "顺着走",
+  "tag": "path-travel",
+  "graphic": "offset-path-traveler",
+  "sample": 3.91,
+  "dest": "/Users/morgan/project/AIvideo/specs/042-recipe-cinema-pipeline/frames/2dec4575/path-travel_3_91.jpg",
+  "vars": {
+    "path": "M -90 390 C 150 490 190 70 430 185 C 650 300 720 105 850 145 C 970 180 1030 85 1090 35",
+    "traveler_label": "顺着走",
+    "accent": "green"
+  }
+}

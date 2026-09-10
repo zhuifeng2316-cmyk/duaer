@@ -1,0 +1,33 @@
+{
+  "id": "2dec4575-e23f-4fb5-a396-7875980496f8",
+  "shot": 2,
+  "intent": "聊天对话",
+  "onScreen": "先问一句",
+  "tag": "chat-thread",
+  "graphic": "message-thread-reveal",
+  "sample": 6.42,
+  "dest": "/Users/morgan/project/AIvideo/specs/042-recipe-cinema-pipeline/frames/2dec4575/chat-thread_6_42.jpg",
+  "vars": {
+    "contactName": "朋友",
+    "questionMessage": "先问一句",
+    "teaserMessage": "你看这个",
+    "cardImage": "graphics/message-thread-reveal-cardImage.png",
+    "cardTitle": "先问一句",
+    "cardDomain": "先问一句",
+    "reactionMessage": "这也行",
+    "reactionEmoji": "😮",
+    "benefitMessage": "三张界面轮播 一次看清",
+    "discoveryMessage": "哪找的",
+    "sourceMessage": "口播里",
+    "workflowMessage": "写完就成片",
+    "ownershipMessage": "自己的口播",
+    "installMessage": "我也试试",
+    "thanksMessage": "谢了",
+    "brandLogo": "graphics/message-thread-reveal-brandLogo.png",
+    "ecProof": "口播成片",
+    "ecFeature1": "照片|克隆画面",
+    "ecFeature2": "声音|克隆口播",
+    "ecFeature3": "一步|出大片",
+    "ecCta": "去做一条"
+  }
+}

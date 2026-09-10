@@ -1,0 +1,19 @@
+{
+  "id": "2dec4575-e23f-4fb5-a396-7875980496f8",
+  "shot": 1,
+  "intent": "界面放大",
+  "onScreen": "看细节",
+  "tag": "ui-zoom",
+  "graphic": "ui-focus-zoom",
+  "sample": 3.91,
+  "dest": "/Users/morgan/project/AIvideo/specs/042-recipe-cinema-pipeline/frames/2dec4575/ui-zoom_3_91.jpg",
+  "vars": {
+    "anchor_x": 64,
+    "anchor_y": 36,
+    "zoom": 1.6,
+    "zoom_at": 1.4,
+    "halo": "show",
+    "accent": "green",
+    "exit": "none"
+  }
+}

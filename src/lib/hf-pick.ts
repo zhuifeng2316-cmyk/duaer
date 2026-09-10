@@ -206,7 +206,7 @@ function optionValue(opt: string | { value: string }): string {
 }
 
 export function isTalkCopyVarId(id: string): boolean {
-  return /^(title|headline|word|traveler_label|click_label|text|notifTitle|cardTitle|shareTitle|ecHeadline|headlineTop|titles|bodies|body|answer\d*|sourceMessage|caption|copy|phrase|line\d*|top|mid|circled|rest|l[123]|v[123])$/i.test(id);
+  return /^(title|headline|word|traveler_label|click_label|text|notifTitle|cardTitle|shareTitle|ecHeadline|headlineTop|titles|bodies|body|answer\d*|sourceMessage|caption|copy|phrase|line\d*|top|mid|circled|rest|l[123]|v[123]|contactName|questionMessage|teaserMessage)$/i.test(id);
 }
 
 /** Parse「总题：项、项」without importing html-compose (avoids cycle). */
@@ -248,6 +248,35 @@ function applyMarkerChecklistFill(
     out[`l${i}`] = item || fallbacks[i - 1]!;
     out[`v${i}`] = "算过";
   }
+}
+
+function applyChatThreadFill(
+  defs: RegistryVar[],
+  shot: Pick<Shot, "onScreenText" | "voiceover">,
+  out: Record<string, string | number>,
+): void {
+  if (!defs.some((d) => d.id === "questionMessage")) return;
+  const line = chineseCopy(shot.onScreenText, "先问一句").slice(0, 18) || "先问一句";
+  const vo = chineseCopy(shot.voiceover, line).slice(0, 18) || line;
+  out.contactName = "朋友";
+  out.questionMessage = line;
+  out.teaserMessage = "你看这个";
+  out.cardTitle = line;
+  out.cardDomain = "duaer.com";
+  out.reactionMessage = "这也行";
+  out.reactionEmoji = "😮";
+  out.benefitMessage = vo;
+  out.discoveryMessage = "哪找的";
+  out.sourceMessage = "口播里";
+  out.workflowMessage = "写完就成片";
+  out.ownershipMessage = "自己的口播";
+  out.installMessage = "我也试试";
+  out.thanksMessage = "谢了";
+  out.ecProof = "口播成片";
+  out.ecFeature1 = "照片|克隆画面";
+  out.ecFeature2 = "声音|克隆口播";
+  out.ecFeature3 = "一步|出大片";
+  out.ecCta = "去做一条";
 }
 
 export function varsCarryTalkCopy(vars?: Record<string, string | number>): boolean {
@@ -430,9 +459,25 @@ export function fillRegistryVars(defs: RegistryVar[], shot: Pick<Shot, "onScreen
     if (def.default != null && def.default !== "") out[def.id] = def.default as string | number;
   }
   applyMarkerChecklistFill(defs, shot, out);
+  applyChatThreadFill(defs, shot, out);
   for (const [id, value] of Object.entries(out)) {
     if (typeof value !== "string" || !VENDOR_ENGLISH.test(value)) continue;
     out[id] = isAssetField({ id, type: "string", default: value }) ? "" : chineseCopy(shot.onScreenText, "口播");
+  }
+  // Scrub leftover Latin demo sentences on chat / CTA chrome (not short enum tokens).
+  for (const [id, value] of Object.entries(out)) {
+    if (typeof value !== "string") continue;
+    if (isAssetField({ id, type: "string", default: value })) continue;
+    if (/^(cursor_variant|exit|accent|halo|cadence|prompt_glyph|spinnerStyle)$/i.test(id)) continue;
+    const t = value.trim();
+    if (LATIN_LABEL.test(id) && LATIN_ONLY.test(t) && /[A-Za-z]/.test(t)) {
+      out[id] = "";
+      continue;
+    }
+    if (/domain/i.test(id) || /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(t)) continue;
+    if (t.length < 8 || /^[a-z0-9_+%-]+$/i.test(t)) continue;
+    if (!LATIN_ONLY.test(t) || !/[A-Za-z]{3,}/.test(t)) continue;
+    out[id] = chineseCopy(shot.onScreenText, "口播");
   }
   return sanitizeGraphicVars(out) || out;
 }
@@ -560,6 +605,55 @@ export function assignGraphics(script: Script, aspect: Aspect = "9:16"): Script 
     ...script,
     shots: alignShotMotions(mapped),
   };
+}
+
+/** 作者点选组件中文名时：不限题材白名单，按目录精确落到那一镜。 */
+export function applyHouseLabelToShot(script: Script, shotIndex: number, label: string, aspect: Aspect = "9:16"): Script {
+  const shot = script.shots[shotIndex];
+  if (!shot) return script;
+  const intent = String(label || "").trim();
+  if (!intent) return script;
+  const house =
+    houseCatalog().find((h) => h.label === intent) ||
+    houseCatalog().find((h) => h.aliases.includes(intent));
+  if (!house) return script;
+  const picked = pickFromHouse(house.wraps, { ...shot, graphicIntent: house.label }, 99);
+  if (!picked) return script;
+  const graphicAssets = attachHouseAssets(shot, picked.name);
+  const host = Boolean(house.host);
+  const nextShot: Shot = {
+    ...shot,
+    graphicIntent: house.label,
+    overlay: picked.type === "component" ? picked.name : undefined,
+    block: picked.type === "block" ? picked.name : undefined,
+    hostStill: host ? false : shot.hostStill,
+    kind: host && !String(shot.imagePrompt || "").trim() ? "empty" : shot.kind,
+    graphicAssets,
+    graphicVars: fillRegistryVars(readRegistryVariables(picked.name), {
+      ...shot,
+      graphicIntent: house.label,
+      graphicAssets,
+    }),
+  };
+  const shots = script.shots.map((row, i) => (i === shotIndex ? nextShot : row));
+  return { ...script, shots: alignShotMotions(shots) };
+}
+
+export function applyHouseLabelToShots(
+  script: Script,
+  label: string,
+  aspect: Aspect = "9:16",
+  shotIndexes?: number[],
+): Script {
+  const indexes =
+    shotIndexes && shotIndexes.length
+      ? shotIndexes
+      : script.shots.map((_, i) => i);
+  let next = script;
+  for (const i of indexes) {
+    next = applyHouseLabelToShot(next, i, label, aspect);
+  }
+  return next;
 }
 
 export function planHouseGraphics(script: Script, aspect: Aspect = "9:16"): Script {

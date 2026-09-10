@@ -1,0 +1,17 @@
+{
+  "id": "2dec4575-e23f-4fb5-a396-7875980496f8",
+  "shot": 2,
+  "intent": "大光标",
+  "onScreen": "点这里",
+  "tag": "big-cursor",
+  "graphic": "oversized-cursor",
+  "sample": 6.42,
+  "dest": "/Users/morgan/project/AIvideo/specs/042-recipe-cinema-pipeline/frames/2dec4575/big-cursor_6_42.jpg",
+  "vars": {
+    "cursor_variant": "light",
+    "target_x": 55,
+    "target_y": 55,
+    "click_label": "点这里",
+    "exit": "none"
+  }
+}

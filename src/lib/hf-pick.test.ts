@@ -174,4 +174,19 @@ describe("smart registry pick", () => {
     expect(String(vars.itemLabel)).not.toMatch(/video/i);
     expect(String(vars.stripText)).not.toMatch(/OPEN-SOURCE/i);
   });
+
+  it("fills message-thread with Chinese chat copy", () => {
+    const defs = readRegistryVariables("message-thread-reveal");
+    const vars = fillRegistryVars(defs, {
+      onScreenText: "先问一句",
+      voiceover: "把成片发出去",
+      graphicIntent: "聊天对话",
+    });
+    expect(vars.contactName).toBe("朋友");
+    expect(vars.questionMessage).toBe("先问一句");
+    expect(vars.teaserMessage).toBe("你看这个");
+    expect(vars.ecCta).toBe("去做一条");
+    expect(String(vars.questionMessage)).not.toMatch(/launch video/i);
+    expect(String(vars.benefitMessage)).not.toMatch(/4K|editor/i);
+  });
 });

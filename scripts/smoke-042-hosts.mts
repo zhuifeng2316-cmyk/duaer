@@ -4,21 +4,19 @@ import { spawn } from "child_process";
 import { rewriteCinemaHtml, writeAndRenderCinema } from "../src/lib/cinema-render";
 import { projectFile, readProject, tryUpdateProject } from "../src/lib/store";
 
+const PRODUCT = "2dec4575-e23f-4fb5-a396-7875980496f8";
+const KNOWLEDGE = "d8a936bd-f108-4a15-9bb2-86dccc59e550";
+
 const CASES = [
-  {
-    id: "2dec4575-e23f-4fb5-a396-7875980496f8",
-    shot: 2,
-    intent: "通知堆",
-    onScreen: "三条提醒",
-    tag: "notify-stack",
-  },
-  {
-    id: "2dec4575-e23f-4fb5-a396-7875980496f8",
-    shot: 1,
-    intent: "分享面板",
-    onScreen: "分享出去",
-    tag: "share-sheet",
-  },
+  { id: PRODUCT, shot: 2, intent: "通知堆", onScreen: "三条提醒", tag: "notify-stack" },
+  { id: PRODUCT, shot: 1, intent: "分享面板", onScreen: "分享出去", tag: "share-sheet" },
+  { id: PRODUCT, shot: 2, intent: "聊天对话", onScreen: "先问一句", tag: "chat-thread" },
+  { id: PRODUCT, shot: 1, intent: "路径游走", onScreen: "顺着走", tag: "path-travel" },
+  { id: PRODUCT, shot: 2, intent: "大光标", onScreen: "点这里", tag: "big-cursor" },
+  { id: PRODUCT, shot: 1, intent: "界面放大", onScreen: "看细节", tag: "ui-zoom" },
+  { id: KNOWLEDGE, shot: 2, intent: "流程图", onScreen: "要不要学", tag: "flowchart" },
+  { id: KNOWLEDGE, shot: 1, intent: "数字跳动", onScreen: "三笔账", tag: "count-up" },
+  { id: KNOWLEDGE, shot: 2, intent: "代码演示", onScreen: "出片", tag: "code-run" },
 ];
 
 function run(cmd: string, args: string[]): Promise<void> {
@@ -57,7 +55,7 @@ async function smokeOne(row: (typeof CASES)[number]) {
   const mid = await readProject(row.id);
   const shot = mid!.script!.shots[row.shot]!;
   const graphic = shot.overlay || shot.block || "";
-  console.log(row.tag, "→", graphic, shot.graphicIntent);
+  console.log(row.tag, "→", graphic, shot.graphicIntent, JSON.stringify(shot.graphicVars || {}).slice(0, 120));
   if (!graphic) throw new Error(`${row.intent} did not mount`);
   await writeAndRenderCinema(row.id, { reuseHtml: true });
   await tryUpdateProject(row.id, {
@@ -78,7 +76,20 @@ async function smokeOne(row: (typeof CASES)[number]) {
   const outDir = path.join(process.cwd(), "specs/042-recipe-cinema-pipeline/frames", row.id.slice(0, 8));
   await mkdir(outDir, { recursive: true });
   const dest = path.join(outDir, `${row.tag}_${String(sample).replace(".", "_")}.jpg`);
-  await run("ffmpeg", ["-y", "-ss", String(sample), "-i", projectFile(row.id, "final.mp4"), "-frames:v", "1", "-update", "1", "-q:v", "2", dest]);
+  await run("ffmpeg", [
+    "-y",
+    "-ss",
+    String(sample),
+    "-i",
+    projectFile(row.id, "final.mp4"),
+    "-frames:v",
+    "1",
+    "-update",
+    "1",
+    "-q:v",
+    "2",
+    dest,
+  ]);
   await writeFile(
     path.join(outDir, `${row.tag}-meta.json`),
     JSON.stringify({ ...row, graphic, sample, dest, vars: after!.script!.shots[row.shot]?.graphicVars }, null, 2),
@@ -88,8 +99,19 @@ async function smokeOne(row: (typeof CASES)[number]) {
 
 async function main() {
   const only = process.argv[2];
-  const rows = only ? CASES.filter((c) => c.tag === only || c.intent === only) : CASES.slice(0, 1);
-  for (const row of rows) await smokeOne(row);
+  const rows = only
+    ? CASES.filter((c) => c.tag === only || c.intent === only || only === "remaining")
+    : CASES;
+  const pick =
+    only === "remaining"
+      ? CASES.filter((c) =>
+          ["chat-thread", "path-travel", "big-cursor", "ui-zoom", "flowchart", "count-up", "code-run"].includes(c.tag),
+        )
+      : rows;
+  for (const row of pick) {
+    console.log("\n===", row.tag, row.intent, "===");
+    await smokeOne(row);
+  }
 }
 
 main().catch((e) => {

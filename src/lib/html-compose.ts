@@ -293,7 +293,7 @@ export function graphicHoldsLettering(
   if (!name) return false;
   if (graphicIsHost(name)) return true;
   if (captionGraphicCarriesTalkCopy(name, vars)) return true;
-  if (/^(data-chart|flowchart|flowchart-vertical|notification-stack|native-notification-pop|notification-pop|pull-to-refresh|app-showcase|code-terminal-run|hw-pipeline|count-up|carousel-circle-1|marker-checklist-card)$/.test(name)) {
+  if (/^(data-chart|flowchart|flowchart-vertical|notification-stack|native-notification-pop|notification-pop|pull-to-refresh|app-showcase|code-terminal-run|hw-pipeline|count-up|carousel-circle-1|marker-checklist-card|share-sheet-carousel|message-thread-reveal)$/.test(name)) {
     return true;
   }
   return varsCarryTalkCopy(vars);

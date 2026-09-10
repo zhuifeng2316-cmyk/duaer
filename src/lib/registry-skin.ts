@@ -2,7 +2,6 @@ import { CINEMA_GRAPHIC_TOKENS } from "./cinema";
 
 const BAKED_COPY = new Set([
   "data-chart",
-  "flowchart-vertical",
   "app-showcase",
   "pull-to-refresh",
   "hw-pipeline",
@@ -11,7 +10,9 @@ const BAKED_COPY = new Set([
   "carousel-circle-1",
   "marker-checklist-card",
   "share-sheet-carousel",
+  "message-thread-reveal",
 ]);
+// flowchart-vertical ships Chinese in house already; skin remap can blank nested HF mounts.
 
 export function needsRegistryCopySkin(name?: string): boolean {
   return Boolean(name && BAKED_COPY.has(name));
@@ -183,6 +184,31 @@ export function skinRegistryHtml(name: string, html: string, copy: { title: stri
       ['"Decline"', '"拒绝"'],
       ['"Share"', JSON.stringify(title.slice(0, 8) || "分享")],
       ["OPEN-SOURCE VIDEO ENGINE · SHIP FROM HTML", title.slice(0, 18) || "口播成片"],
+    ]);
+  } else if (name === "message-thread-reveal") {
+    next = applyPairs(next, [
+      ['"Rachel"', '"朋友"'],
+      ["Rachel", "朋友"],
+      ["what r u using for the launch video??", title.slice(0, 18) || "先问一句"],
+      ["wait look 👀", "你看这个"],
+      ["renders in 4K. no editor", line.slice(0, 18) || "写完就成片"],
+      ["where did u find this", "哪找的"],
+      ["u just write plain html tags", "写完就成片"],
+      ["the code is yours forever", "自己的口播"],
+      ["installing rn", "我也试试"],
+      ["ty bestie 💚", "谢了"],
+      ["OMG IT'S HTML", "这也行"],
+      ["OMG IT&#39;S HTML", "这也行"],
+      ["Start rendering free", "去做一条"],
+      ["12,000+ creators", "口播成片"],
+      ["Write|plain HTML", "照片|克隆画面"],
+      ["Render|pixel-perfect", "声音|克隆口播"],
+      ["Own|every line", "一步|出大片"],
+      ["hyperframes.口播.com", "duaer.com"],
+      ["Write HTML, render pixel-perfect video", title.slice(0, 18) || "口播成片"],
+      [">Message<", ">发消息<"],
+      ["Message</div>", "发消息</div>"],
+      [">Message</", ">发消息</"],
     ]);
   }
   return paintCinemaAccents(next);

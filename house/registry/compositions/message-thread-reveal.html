@@ -830,7 +830,7 @@
           </div>
           <div id="mtr-plusbtn">+</div>
           <div id="mtr-field"></div>
-          <div id="mtr-ph">Message</div>
+          <div id="mtr-ph">发消息</div>
           <div id="mtr-typedwrap">
             <span class="typed" id="mtr-ty-1-0">o<span class="caret"></span></span>
             <span class="typed" id="mtr-ty-1-1">wa<span class="caret"></span></span>
@@ -1110,7 +1110,7 @@
           if (!t) return fallback;
           return t.length > max ? t.slice(0, max) : t;
         }
-        var contact = text(vars.contactName, "Rachel", 16);
+        var contact = text(vars.contactName, "朋友", 16);
         document.getElementById("mtr-hdr-avatar").textContent = contact.charAt(0).toUpperCase();
         var namePill = document.getElementById("mtr-hdr-name");
         namePill.innerHTML = "";
@@ -1147,25 +1147,25 @@
             line.textContent = lines[index] || lines[0] || "";
           });
         }
-        var teaserMessage = text(vars.teaserMessage, "wait look 👀", 20);
-        var benefitMessage = text(vars.benefitMessage, "renders in 4K. no editor", 32);
-        var sourceMessage = text(vars.sourceMessage, "on 口播", 20);
-        var workflowMessage = text(vars.workflowMessage, "u just write plain html tags", 34);
-        var ownershipMessage = text(vars.ownershipMessage, "the code is yours forever", 32);
+        var teaserMessage = text(vars.teaserMessage, "你看这个", 20);
+        var benefitMessage = text(vars.benefitMessage, "写完就成片", 32);
+        var sourceMessage = text(vars.sourceMessage, "口播里", 20);
+        var workflowMessage = text(vars.workflowMessage, "写完就成片", 34);
+        var ownershipMessage = text(vars.ownershipMessage, "自己的口播", 32);
         setText(
           "mtr-message-question",
-          text(vars.questionMessage, "what r u using for the launch video??", 46),
+          text(vars.questionMessage, "先问一句", 46),
         );
         setText("mtr-message-teaser", teaserMessage);
-        setText("mtr-message-reaction", text(vars.reactionMessage, "OMG IT'S HTML", 24));
-        setText("mtr-message-emoji", text(vars.reactionEmoji, "🤯🤯🤯", 12));
+        setText("mtr-message-reaction", text(vars.reactionMessage, "这也行", 24));
+        setText("mtr-message-emoji", text(vars.reactionEmoji, "😮", 12));
         setText("mtr-message-benefit", benefitMessage);
-        setText("mtr-message-discovery", text(vars.discoveryMessage, "where did u find this", 28));
+        setText("mtr-message-discovery", text(vars.discoveryMessage, "哪找的", 28));
         setText("mtr-message-source", sourceMessage);
         setText("mtr-message-workflow", workflowMessage);
         setText("mtr-message-ownership", ownershipMessage);
-        setText("mtr-message-install", text(vars.installMessage, "installing rn", 20));
-        setText("mtr-message-thanks", text(vars.thanksMessage, "ty bestie 💚", 20));
+        setText("mtr-message-install", text(vars.installMessage, "我也试试", 20));
+        setText("mtr-message-thanks", text(vars.thanksMessage, "谢了", 20));
         setTyped(1, teaserMessage);
         setTyped(2, benefitMessage);
         setTyped(3, sourceMessage);
@@ -1173,25 +1173,25 @@
         setTyped(5, ownershipMessage);
         document.querySelector(".cardtitle").textContent = text(
           vars.cardTitle,
-          "口播 | Write HTML, render pixel-perfect video",
+          "口播成片",
           80,
         );
         document.querySelector(".carddomain").textContent = text(
           vars.cardDomain,
-          "hyperframes.口播.com",
+          "duaer.com",
           40,
         );
         document.getElementById("mtr-ec-fam").textContent = text(
           vars.ecProof,
-          "12,000+ creators",
+          "口播成片",
           30,
         );
-        setTwoLines("mtr-ec-feature-1", text(vars.ecFeature1, "Write|plain HTML", 32));
-        setTwoLines("mtr-ec-feature-2", text(vars.ecFeature2, "Render|pixel-perfect", 32));
-        setTwoLines("mtr-ec-feature-3", text(vars.ecFeature3, "Own|every line", 32));
+        setTwoLines("mtr-ec-feature-1", text(vars.ecFeature1, "照片|克隆画面", 32));
+        setTwoLines("mtr-ec-feature-2", text(vars.ecFeature2, "声音|克隆口播", 32));
+        setTwoLines("mtr-ec-feature-3", text(vars.ecFeature3, "一步|出大片", 32));
         document.getElementById("mtr-ec-cta").textContent = text(
           vars.ecCta,
-          "Start rendering free",
+          "去做一条",
           26,
         );
       })();

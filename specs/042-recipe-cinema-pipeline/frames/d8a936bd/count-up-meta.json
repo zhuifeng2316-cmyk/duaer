@@ -1,0 +1,18 @@
+{
+  "id": "d8a936bd-f108-4a15-9bb2-86dccc59e550",
+  "shot": 1,
+  "intent": "数字跳动",
+  "onScreen": "三笔账",
+  "tag": "count-up",
+  "graphic": "count-up",
+  "sample": 4.03,
+  "dest": "/Users/morgan/project/AIvideo/specs/042-recipe-cinema-pipeline/frames/d8a936bd/count-up_4_03.jpg",
+  "vars": {
+    "start": 0,
+    "end": 100,
+    "suffix": "%",
+    "accent": "green",
+    "glow": false,
+    "exit": "none"
+  }
+}

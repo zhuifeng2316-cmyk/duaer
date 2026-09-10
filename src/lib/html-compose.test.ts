@@ -411,7 +411,7 @@ describe("cinema html compose", () => {
       clips: graphicList.clips.map((c, i) => (i === 1 ? { ...c, block: "flowchart-vertical", overlay: undefined } : c)),
     });
     expect(flowHtml).toContain('data-registry="flowchart-vertical"');
-    expect(flowHtml).toContain("flowchart-vertical--shot-2");
+    expect(flowHtml).toContain('data-composition-id="flowchart-vertical"');
     expect(flowHtml).toContain('data-width="1440"');
     expect(flowHtml).toContain('data-height="2560"');
     expect(flowHtml).toContain("registry-adapt");
