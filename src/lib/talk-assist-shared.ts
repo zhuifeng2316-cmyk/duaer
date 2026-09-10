@@ -8,7 +8,9 @@ import {
   MOVE_CAPTION_STYLES,
   POP_CAPTION_STYLES,
 } from "./caption-styles";
+import type { VisualMode } from "./hf-labels";
 import house from "./duaer-registry.json";
+import { recipeIntentLabels } from "./skill-recipes";
 
 export type AssistMessage = { role: "user" | "assistant"; content: string };
 
@@ -38,6 +40,7 @@ type HouseRow = {
 };
 
 const HOUSE = house as HouseRow[];
+const MODE_ORDER: VisualMode[] = ["story", "product", "knowledge"];
 
 const CAPTION_GROUPS: { title: string; rows: readonly { id: string; label: string }[] }[] = [
   { title: "口播字", rows: HOUSE_CAPTION_STYLES },
@@ -55,60 +58,34 @@ const MODE_TITLE: Record<string, string> = {
   knowledge: "知识输出",
 };
 
-/** 可跨题材点选的独立画面块：代码 / 图表 / 界面等（不限当前口播题材白名单）。 */
-const STANDALONE_RE =
-  /code|terminal|vscode|developer|chart|data|graph|map|mock-ui|showcase|carousel|gallery|checklist|instrument|snippet|终端|代码|图表|流程|地图|清单|轮播|对话露出|产品展示|计数|金额|示波|对照|粒子|着色|立体|滚动|变形/;
-
-function isStandaloneHouse(row: HouseRow): boolean {
-  const blob = [row.label, row.wraps, ...(row.tags || [])].join(" ");
-  return STANDALONE_RE.test(blob);
-}
-
-/** 轮播圆二…轮播视野五等同族变体太多，目录里只留代表名。 */
-function isCrowdedVariant(label: string): boolean {
-  if (label === "轮播") return false;
-  return /^轮播/.test(label) || /果味终端(?!基础)/.test(label) || /代码片段(?!果味终端基础|暗二零二六|光二零二六|高反差$)/.test(label);
-}
-
 function formatModeCatalog(mode: string): string {
   const rows = HOUSE.filter((row) => row.modes.includes(mode));
   const blocks = rows.filter((row) => row.kind === "block");
   const comps = rows.filter((row) => row.kind !== "block");
   return [
-    `### ${MODE_TITLE[mode] || mode} · 画面块`,
+    `### 全库 · ${MODE_TITLE[mode] || mode} · 画面块（${blocks.length}）`,
     blocks.map((row) => `- ${row.label}`).join("\n") || "- （无）",
     "",
-    `### ${MODE_TITLE[mode] || mode} · 叠层`,
+    `### 全库 · ${MODE_TITLE[mode] || mode} · 叠层（${comps.length}）`,
     comps.map((row) => `- ${row.label}`).join("\n") || "- （无）",
   ].join("\n");
 }
 
-function formatStandaloneCatalog(primaryMode?: string | null): string {
-  const seen = new Set(
-    primaryMode ? HOUSE.filter((row) => row.modes.includes(primaryMode)).map((row) => row.label) : [],
-  );
-  const groups: { title: string; test: RegExp; labels: string[] }[] = [
-    { title: "代码 / 终端", test: /code|terminal|vscode|developer|终端|代码/, labels: [] },
-    { title: "图表 / 数据 / 地图", test: /chart|data|graph|instrument|map|图表|流程|地图|清单|计数|金额|示波/, labels: [] },
-    { title: "界面 / 轮播 / 展示", test: /mock-ui|showcase|carousel|gallery|轮播|对话|产品|checklist/, labels: [] },
-  ];
-  for (const row of HOUSE) {
-    if (!isStandaloneHouse(row)) continue;
-    if (seen.has(row.label)) continue;
-    if (isCrowdedVariant(row.label)) continue;
-    const blob = [row.label, ...(row.tags || [])].join(" ");
-    const group = groups.find((g) => g.test.test(blob)) || groups[2]!;
-    if (group.labels.includes(row.label)) continue;
-    group.labels.push(row.label);
-    seen.add(row.label);
-  }
-  const body = groups
-    .filter((g) => g.labels.length)
-    .map((g) => `### 可独立用 · ${g.title}\n${g.labels.map((name) => `- ${name}`).join("\n")}`)
+function formatRecipeCatalog(mode: string): string {
+  const primary = (MODE_ORDER.includes(mode as VisualMode) ? mode : "story") as VisualMode;
+  const primaryLines = recipeIntentLabels(primary).map((name) => `- ${name}`).join("\n");
+  const others = MODE_ORDER.filter((m) => m !== primary)
+    .map((m) => {
+      const lines = recipeIntentLabels(m).map((name) => `- ${name}`).join("\n");
+      return `### 题材精选 · ${MODE_TITLE[m]}\n${lines}`;
+    })
     .join("\n\n");
-  return body
-    ? `以下组件不限当前题材，也可按镜点用（代码、图表、界面等独立画面块）：\n\n${body}`
-    : "";
+  return [
+    `### 题材精选 · ${MODE_TITLE[primary]}（写分镜常用，优先推荐）`,
+    primaryLines,
+    "",
+    others,
+  ].join("\n");
 }
 
 export function captionCatalogForPrompt(): string {
@@ -118,12 +95,16 @@ export function captionCatalogForPrompt(): string {
   }).join("\n\n");
 }
 
+/** 题材精选（配方）+ 全库约四百个组件中文名。 */
 export function graphicCatalogForPrompt(mode?: string | null): string {
-  if (!mode) {
-    return ["story", "product", "knowledge"].map(formatModeCatalog).join("\n\n");
-  }
-  const parts = [formatModeCatalog(mode), formatStandaloneCatalog(mode)].filter(Boolean);
-  return parts.join("\n\n");
+  const primary = mode || "story";
+  return [
+    formatRecipeCatalog(primary),
+    "",
+    `全库组件共 ${HOUSE.length} 个，下面按题材列出，均可点名预览与用到某一镜：`,
+    "",
+    MODE_ORDER.map(formatModeCatalog).join("\n\n"),
+  ].join("\n");
 }
 
 export function resolveHouseByLabel(raw: string): HouseRow | undefined {

@@ -9,3 +9,4 @@
 - [x] T7 组件目录进 prompt；回复抽组件中文名；左右预览卡
 - [x] T8 `POST /api/projects/[id]/assist-graphic` 用到这一镜 / 各镜
 - [x] T9 单测 + 接口测组件推荐与应用
+- [x] T10 题材精选 + 全库组件目录进 prompt；单测锁定约四百个中文名
