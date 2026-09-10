@@ -99,7 +99,8 @@ function preferListHighlight(shot: Shot): Shot {
     graphicAssets: undefined,
     hostStill: true,
     kind: shot.kind === "empty" ? "close" : shot.kind,
-    imagePrompt: keepPrompt || (shot.kind === "empty" ? "人物半身，侧光，闭口，不要对镜头讲话" : prompt),
+    // Always keep a person prompt — close/wide with empty prompt used to leave imagePrompt blank.
+    imagePrompt: keepPrompt || "人物半身，侧光，闭口，不要对镜头讲话",
     scene: sceneLooksLikeGraphic ? "划重点叠人" : shot.scene,
   };
 }

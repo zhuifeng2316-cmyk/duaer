@@ -1,0 +1,19 @@
+{
+  "id": "d8a936bd-f108-4a15-9bb2-86dccc59e550",
+  "sample": 7.29,
+  "dest": "/Users/morgan/project/AIvideo/specs/042-recipe-cinema-pipeline/frames/d8a936bd/checklist_7_29.jpg",
+  "intent": "打勾清单",
+  "graphic": "marker-checklist-card",
+  "vars": {
+    "top": "这一组",
+    "mid": "要",
+    "circled": "算",
+    "rest": "清",
+    "l1": "眼前快乐",
+    "v1": "算过",
+    "l2": "花钱代价",
+    "v2": "算过",
+    "l3": "三项",
+    "v3": "算过"
+  }
+}

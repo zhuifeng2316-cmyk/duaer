@@ -311,6 +311,21 @@ describe("cinema html compose", () => {
     expect(captionFilled.showSpoken).toBe(false);
     expect(graphicHoldsLettering("notification-stack", { titles: "刷新一下" })).toBe(true);
     expect(graphicHoldsLettering("data-chart")).toBe(true);
+    expect(graphicHoldsLettering("marker-checklist-card")).toBe(true);
+    const checklistList = planShotLettering(
+      {
+        ...list.clips[0]!,
+        overlay: "marker-checklist-card",
+        block: undefined,
+        onScreenText: "眼前快乐＞花钱代价",
+        lettering: "graphic",
+        graphicVars: { top: "这一组", l1: "眼前快乐", l2: "花钱代价" },
+      },
+      2,
+      5,
+    );
+    expect(checklistList.showSpoken).toBe(false);
+    expect(checklistList.style).not.toBe("highlight");
     const notify = planShotLettering(
       { ...list.clips[0]!, overlay: "native-notification-pop", motion: "push-in", layout: "hero" },
       0,

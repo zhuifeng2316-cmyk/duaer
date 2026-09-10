@@ -18,6 +18,7 @@ describe("house registry", () => {
     expect(houseItem("carousel-circle-1")?.imageSlots.map((s) => s.id)).toEqual(["image1", "image2", "image3"]);
     expect(houseItem("carousel-circle-1")?.imageSlots.every((s) => /电影大片/.test(s.hint) && !/干净/.test(s.hint))).toBe(true);
     expect(houseItem("carousel-circle-1")?.host).toBe(true);
+    expect(houseItem("marker-checklist-card")?.host).toBe(true);
     expect(houseItem("pull-to-refresh")?.host).toBe(false);
     const product = housePromptLine("product", undefined, "portrait");
     expect(product).toMatch(/下拉刷新/);
@@ -32,7 +33,7 @@ describe("house registry", () => {
     expect(knowledge).toMatch(/划重点/);
     expect(knowledge).toMatch(/流程图/);
     expect(housePromptLine("knowledge", undefined, "portrait")).toMatch(/竖屏不要用图表/);
-    expect(knowledge).toMatch(/人还在，字画在画面上/);
+    expect(knowledge).toMatch(/人还在，总题留下/);
     const listed = knowledge.split("只从这些中文动作里选或空着：")[1]?.split("。")[0] || "";
     expect(listed.split("、").length).toBeLessThanOrEqual(12);
     expect(knowledge).not.toMatch(/果味金额|美国地图|对话露出/);

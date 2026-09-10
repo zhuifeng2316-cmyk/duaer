@@ -351,12 +351,12 @@ const CAPTION_PREVIEW_CLASS: Record<string, string> = {
   popHalftone: styles.popHalftone,
 };
 
-function captionPreviewLines(text: string): string[] {
+export function captionPreviewLines(text: string): string[] {
   const cleaned = (text || "口播字").replace(/[，。！？、：；…—,.!?;:“”"'‘’\s]+/g, "").slice(0, 12);
   return wrapCoverTitle(cleaned || "口播字");
 }
 
-function CaptionStylePreview({
+export function CaptionStylePreview({
   preview,
   lines,
   onBoard,
@@ -483,7 +483,7 @@ const COVER_PREVIEW_CLASS: Record<string, string> = {
   stamp: styles.coverStamp,
 };
 
-function CaptionStyleTile({
+export function CaptionStyleTile({
   id,
   label,
   preview,

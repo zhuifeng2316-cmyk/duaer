@@ -41,6 +41,25 @@ describe("registry copy skin", () => {
     expect(flow).toContain(">你<");
     expect(flow).not.toContain("Should I learn");
     expect(flow).not.toContain("Pythom");
+    const checklist = skinRegistryHtml(
+      "marker-checklist-card",
+      `<div id="mcc-top">THE POWER</div>
+       <div id="mcc-mid">OF</div>
+       <span id="mcc-circled">ONE</span><span id="mcc-rest">FILE</span>
+       <div class="mcc-label">WRITE</div><div class="mcc-value">HTML</div>
+       <div class="mcc-label">RENDER</div><div class="mcc-value">IN 4K</div>
+       <div class="mcc-label">SHIP</div><div class="mcc-value">TODAY</div>
+       <script>text(vars.top, "THE POWER", 12); text(vars.mid, "OF", 6);</script>`,
+      { title: "三笔账", line: "时间钱风险" },
+    );
+    expect(needsRegistryCopySkin("marker-checklist-card")).toBe(true);
+    expect(checklist).toContain("三笔账");
+    expect(checklist).toContain("要");
+    expect(checklist).toContain("算");
+    expect(checklist).toContain("清");
+    expect(checklist).toContain("一项");
+    expect(checklist).not.toContain("THE POWER");
+    expect(checklist).not.toContain("IN 4K");
     const aliased = skinnedRegistryHtml("data-chart", `data-composition-id="data-chart"`, "shot-2", {
       title: "数",
       line: "比",

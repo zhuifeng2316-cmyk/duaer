@@ -200,6 +200,34 @@ describe("director compile", () => {
     expect(stillBakesLettering(next.shots[2]!)).toBe(false);
   });
 
+  it("fills person prompt when remapping a close shot with empty imagePrompt to highlight", () => {
+    const next = compileDirector(
+      {
+        ...MOCK_SCRIPT,
+        visualMode: "story",
+        shots: [
+          MOCK_SCRIPT.shots[0]!,
+          MOCK_SCRIPT.shots[1]!,
+          {
+            ...MOCK_SCRIPT.shots[2]!,
+            graphicIntent: "标题卡",
+            overlay: "titlecard-calm",
+            kind: "close",
+            imagePrompt: "",
+            scene: "划重点叠人",
+            onScreenText: "三笔账：时间、钱、风险",
+            lettering: "graphic",
+          },
+          MOCK_SCRIPT.shots[3]!,
+        ],
+      },
+      "9:16",
+    );
+    expect(next.shots[2]?.graphicIntent).toBe("划重点");
+    expect(next.shots[2]?.hostStill).toBe(true);
+    expect(next.shots[2]?.imagePrompt).toMatch(/人物半身/);
+  });
+
   it("does not slam over a baked still title", () => {
     const list = buildEditList({
       script: { ...MOCK_SCRIPT, visualMode: "story" },

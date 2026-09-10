@@ -35,15 +35,20 @@
   min-height: 0;
   display: grid;
   grid-template-columns: 360px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: 28px;
   align-items: stretch;
+  overflow: hidden;
 }
 
 .rail {
   min-height: 0;
-  overflow-y: auto;
+  min-width: 0;
+  overflow: hidden;
   overscroll-behavior: contain;
-  padding-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 0;
 }
 
 .hero {
@@ -287,6 +292,41 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+/* 口播详情：右侧整块内容区内部滚动，边框始终可见 */
+.talkFrame {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid rgba(232, 201, 168, 0.48);
+  border-radius: 20px;
+  background: #12100e;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+  padding: 16px 18px 20px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.talkFrame::-webkit-scrollbar {
+  display: none;
+}
+
+.talkWork {
+  min-width: 0;
+  min-height: min-content;
+}
+
+.talkWork .panel {
+  min-height: 0;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .panel {
@@ -2254,6 +2294,7 @@
   gap: 12px;
   min-height: 0;
   height: 100%;
+  overflow: hidden;
 }
 
 .assistHead {
@@ -2319,7 +2360,6 @@
 
 .assistBubbleUser,
 .assistBubbleBot {
-  white-space: pre-wrap;
   word-break: break-word;
   font-size: 14px;
   line-height: 1.55;
@@ -2330,27 +2370,110 @@
 
 .assistBubbleUser {
   align-self: flex-end;
+  white-space: pre-wrap;
   background: rgba(217, 133, 74, 0.22);
   color: #f7efe4;
 }
 
 .assistBubbleBot {
   align-self: stretch;
+  white-space: normal;
   background: rgba(255, 255, 255, 0.05);
   color: #e8dccf;
   border: 1px solid rgba(232, 201, 168, 0.12);
 }
 
+.assistMd :global(p) {
+  margin: 0 0 0.55em;
+}
+
+.assistMd :global(p:last-child) {
+  margin-bottom: 0;
+}
+
+.assistMd :global(ul),
+.assistMd :global(ol) {
+  margin: 0.35em 0 0.55em;
+  padding-left: 1.35em;
+  list-style-position: outside;
+}
+
+.assistMd :global(ul) {
+  list-style-type: disc;
+}
+
+.assistMd :global(ol) {
+  list-style-type: decimal;
+}
+
+.assistMd :global(li) {
+  margin: 0.2em 0;
+}
+
+.assistMd :global(h3),
+.assistMd :global(h4),
+.assistMd :global(h5) {
+  margin: 0.45em 0 0.35em;
+  font-family: "Songti SC", "STSong", "Noto Serif SC", serif;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #f3eadf;
+}
+
+.assistMd :global(h3) {
+  font-size: 1.05em;
+}
+
+.assistMd :global(h4),
+.assistMd :global(h5) {
+  font-size: 1em;
+}
+
+.assistMd :global(h3:first-child),
+.assistMd :global(h4:first-child),
+.assistMd :global(h5:first-child) {
+  margin-top: 0;
+}
+
+.assistMd :global(strong) {
+  color: #f7efe4;
+  font-weight: 700;
+}
+
+.assistMd :global(em) {
+  font-style: italic;
+  color: #e8dccf;
+}
+
+.assistMd :global(code) {
+  font-size: 0.9em;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.assistTurn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
 .assistRecs {
   display: grid;
   gap: 8px;
-  flex-shrink: 0;
+  width: 100%;
 }
 
 .assistRecRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.assistRecFrame {
+  min-height: 88px;
+  aspect-ratio: 16 / 9;
 }
 
 .assistRecBtn {
@@ -2562,6 +2685,13 @@
   .rail,
   .stage {
     overflow: visible;
+  }
+
+  .talkFrame {
+    overflow-x: hidden;
+    overflow-y: auto;
+    max-height: min(70vh, 900px);
+    min-height: 420px;
   }
 
   .stage,

@@ -206,7 +206,48 @@ function optionValue(opt: string | { value: string }): string {
 }
 
 export function isTalkCopyVarId(id: string): boolean {
-  return /^(title|headline|word|traveler_label|click_label|text|notifTitle|cardTitle|shareTitle|ecHeadline|headlineTop|titles|bodies|body|answer\d*|sourceMessage|caption|copy|phrase|line\d*)$/i.test(id);
+  return /^(title|headline|word|traveler_label|click_label|text|notifTitle|cardTitle|shareTitle|ecHeadline|headlineTop|titles|bodies|body|answer\d*|sourceMessage|caption|copy|phrase|line\d*|top|mid|circled|rest|l[123]|v[123])$/i.test(id);
+}
+
+/** Parse「总题：项、项」without importing html-compose (avoids cycle). */
+function checklistList(text: string): { title: string; items: string[] } | undefined {
+  const raw = String(text || "").trim();
+  if (!raw) return undefined;
+  const colon = raw.split(/[：:]/);
+  const hasTitle = colon.length >= 2 && /[\u4e00-\u9fff]/.test(colon[0] || "");
+  const rest = hasTitle ? colon.slice(1).join("") : raw;
+  if (!hasTitle && !/[、＞>]/.test(rest)) return undefined;
+  const title = hasTitle ? displayTalkCopy(colon[0]!) : "";
+  const items = rest
+    .split(/[、，,＞>\s]+/)
+    .map((s) => displayTalkCopy(s))
+    .filter((s) => s.length >= 1 && s.length <= 12);
+  if (items.length < 2) return undefined;
+  return { title, items };
+}
+
+function applyMarkerChecklistFill(
+  defs: RegistryVar[],
+  shot: Pick<Shot, "onScreenText" | "voiceover">,
+  out: Record<string, string | number>,
+): void {
+  const ids = new Set(defs.map((d) => d.id));
+  if (!ids.has("top") || !ids.has("l1")) return;
+  const list = checklistList(String(shot.onScreenText || "")) || checklistList(String(shot.voiceover || ""));
+  // When list has no explicit title (「A＞B」), don't dump the whole string into the marker headline.
+  const title =
+    displayTalkCopy(list?.title || (!list ? firstTalkClause(String(shot.onScreenText || "")) : "") || "这一组").slice(0, 8) ||
+    "这一组";
+  out.top = title;
+  out.mid = "要";
+  out.circled = "算";
+  out.rest = "清";
+  const fallbacks = ["一项", "二项", "三项"];
+  for (let i = 1; i <= 3; i++) {
+    const item = displayTalkCopy(list?.items[i - 1] || "").slice(0, 6);
+    out[`l${i}`] = item || fallbacks[i - 1]!;
+    out[`v${i}`] = "算过";
+  }
 }
 
 export function varsCarryTalkCopy(vars?: Record<string, string | number>): boolean {
@@ -350,7 +391,7 @@ export function fillRegistryVars(defs: RegistryVar[], shot: Pick<Shot, "onScreen
       out[def.id] = firstTalkClause(String(shot.onScreenText || def.default || ""));
       continue;
     }
-    if (isTalkCopyVarId(def.id) && !/^(titles|bodies|body|answer\d*|sourceMessage)$/i.test(def.id)) {
+    if (isTalkCopyVarId(def.id) && !/^(titles|bodies|body|answer\d*|sourceMessage|top|mid|circled|rest|l[123]|v[123])$/i.test(def.id)) {
       out[def.id] = chineseCopy(shot.onScreenText, def.default);
       continue;
     }
@@ -372,6 +413,7 @@ export function fillRegistryVars(defs: RegistryVar[], shot: Pick<Shot, "onScreen
     }
     if (def.default != null && def.default !== "") out[def.id] = def.default as string | number;
   }
+  applyMarkerChecklistFill(defs, shot, out);
   for (const [id, value] of Object.entries(out)) {
     if (typeof value !== "string" || !VENDOR_ENGLISH.test(value)) continue;
     out[id] = isAssetField({ id, type: "string", default: value }) ? "" : chineseCopy(shot.onScreenText, "口播");

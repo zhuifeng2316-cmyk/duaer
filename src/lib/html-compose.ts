@@ -365,6 +365,11 @@ export function planShotLettering(
     if (clip.lettering === "overlay-highlight") style = "highlight";
   }
   const list = shotHighlightList(clip.onScreenText, clip.voiceover);
+  // Host/graphic that paints its own copy wins over native highlight — except empty caption demos
+  // (titlecard / caption-*) which compose drops when the shot is a highlight list.
+  if (graphicHoldsLettering(graphic, clip.graphicVars) && !isCaptionGraphic(graphic)) {
+    return { style: list ? "wipe" : style, skin: forced?.id, showPoster: false, showSpoken: false, pose: "top-left" };
+  }
   if (list) {
     return { style: "highlight", skin: forced?.id, showPoster: false, showSpoken: true, pose: "top-left" };
   }

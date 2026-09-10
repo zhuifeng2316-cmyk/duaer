@@ -9029,7 +9029,7 @@
   {
     "wraps": "marker-checklist-card",
     "label": "打勾清单",
-    "host": false,
+    "host": true,
     "modes": [
       "story",
       "knowledge"

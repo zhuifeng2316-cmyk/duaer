@@ -6,6 +6,7 @@ import {
   parseRegistryVariables,
   pickGraphicForShot,
   rankRegistry,
+  readRegistryVariables,
   varsCarryTalkCopy,
 } from "./hf-pick";
 import { MOCK_SCRIPT } from "./copy";
@@ -129,5 +130,31 @@ describe("smart registry pick", () => {
     expect(next.shots[2]?.block).toBeUndefined();
     expect(next.shots.every((s) => s.overlay !== "gesture-tap" && s.block !== "gesture-tap")).toBe(true);
     expect(next.shots[3]?.block).toBe("carousel-circle-1");
+  });
+
+  it("fills marker-checklist with Chinese list parts, not English demo shell", () => {
+    const defs = readRegistryVariables("marker-checklist-card");
+    const vars = fillRegistryVars(defs, {
+      onScreenText: "三笔账：时间、钱、风险",
+      voiceover: "这三笔账都得算",
+      graphicIntent: "打勾清单",
+    });
+    expect(vars.top).toBe("三笔账");
+    expect(vars.mid).toBe("要");
+    expect(vars.circled).toBe("算");
+    expect(vars.rest).toBe("清");
+    expect(vars.l1).toBe("时间");
+    expect(vars.v1).toBe("算过");
+    expect(vars.l2).toBe("钱");
+    expect(vars.l3).toBe("风险");
+    expect(JSON.stringify(vars)).not.toMatch(/THE POWER|WRITE|IN 4K|TODAY/i);
+    const gt = fillRegistryVars(defs, {
+      onScreenText: "眼前快乐＞花钱代价",
+      voiceover: "先算这两笔",
+      graphicIntent: "打勾清单",
+    });
+    expect(gt.top).toBe("这一组");
+    expect(gt.l1).toBe("眼前快乐");
+    expect(gt.l2).toBe("花钱代价");
   });
 });

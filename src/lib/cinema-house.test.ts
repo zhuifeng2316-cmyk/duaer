@@ -153,6 +153,7 @@ describe("house components meet cinema grade", () => {
       "hw-pipeline",
       "count-up",
       "carousel-circle-1",
+      "marker-checklist-card",
     ];
     for (const name of named) {
       expect(graphicHoldsLettering(name), name).toBe(true);
@@ -199,6 +200,13 @@ describe("house components meet cinema grade", () => {
     const carousel = houseHtml("carousel-circle-1");
     expect(carousel.toLowerCase()).not.toContain("#ededef");
     expect(carousel.toLowerCase()).toContain(CINEMA_GRAPHIC_TOKENS.bg);
+
+    const checklist = houseHtml("marker-checklist-card");
+    expect(visibleRegistryCopy(checklist)).not.toMatch(HOUSE_DEMO_ENGLISH);
+    expect(checklist).toContain("这一组");
+    expect(checklist).toContain("算过");
+    expect(checklist).not.toContain("THE POWER");
+    expect(checklist).not.toContain("IN 4K");
 
     const skinned = skinRegistryHtml("data-chart", chart, { title: "看这组数", line: "前后对比" });
     expect(skinned).toContain("看这组数");
