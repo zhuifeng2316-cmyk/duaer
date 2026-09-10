@@ -167,13 +167,19 @@ export function registryMountSize(name: string, talk?: { width: number; height: 
   const item = CATALOG_BY_NAME.get(name);
   if (!item?.width || !item?.height) return { hostFill: true };
   if (isHouseGraphic(name) && talk?.width && talk?.height) {
+    const scale = Math.max(talk.width / item.width, talk.height / item.height);
+    // Exact frame match: fill like overlay hosts. Identity adapt + full-frame nested
+    // width/height has blanked flowchart-vertical in HyperFrames encode.
+    if (item.width === talk.width && item.height === talk.height) {
+      return { hostFill: true };
+    }
     // Cover the talk frame (not letterbox). Landscape hosts on 9:16 scale up and crop.
     return {
       width: item.width,
       height: item.height,
       hostFill: false,
       adapt: true,
-      scale: Math.max(talk.width / item.width, talk.height / item.height),
+      scale,
     };
   }
   return { width: item.width, height: item.height, hostFill: false };

@@ -30,7 +30,6 @@ export const CINEMA_GRAPHIC_TOKENS = {
 };
 
 export const CINEMA_HOST_GRADE = [
-  "flowchart-vertical",
   "data-chart",
   "caption-highlight",
   "carousel-circle-1",

@@ -53,7 +53,7 @@ describe("cinema lock", () => {
     expect(CINEMA_GRAPHIC_TOKENS.accent).toBe("#d4a05a");
     expect(cinemaMountVars()).toContain("--accent:#d4a05a");
     expect(cinemaMountVars()).toContain("--background:#0c0a08");
-    expect(needsCinemaHostGrade("flowchart-vertical")).toBe(true);
+    expect(needsCinemaHostGrade("flowchart-vertical")).toBe(false);
     expect(needsCinemaHostGrade("data-chart")).toBe(true);
     expect(needsCinemaHostGrade("caption-kinetic-slam")).toBe(false);
     expect(needsCinemaHostGrade("app-showcase")).toBe(true);

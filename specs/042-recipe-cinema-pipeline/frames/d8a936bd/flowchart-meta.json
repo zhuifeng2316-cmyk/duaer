@@ -7,5 +7,7 @@
   "graphic": "flowchart-vertical",
   "sample": 7.29,
   "dest": "/Users/morgan/project/AIvideo/specs/042-recipe-cinema-pipeline/frames/d8a936bd/flowchart_7_29.jpg",
-  "vars": {}
+  "vars": {},
+  "pass": true,
+  "note": "template+#root; overlay fill; visible-at-t0; no fade-white"
 }

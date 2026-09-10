@@ -412,9 +412,8 @@ describe("cinema html compose", () => {
     });
     expect(flowHtml).toContain('data-registry="flowchart-vertical"');
     expect(flowHtml).toContain('data-composition-id="flowchart-vertical"');
-    expect(flowHtml).toContain('data-width="1440"');
-    expect(flowHtml).toContain('data-height="2560"');
-    expect(flowHtml).toContain("registry-adapt");
+    expect(flowHtml).toMatch(/class="registry-overlay[^"]*"[^>]*data-registry="flowchart-vertical"/);
+    expect(flowHtml).not.toMatch(/data-registry="flowchart-vertical"[^>]*data-width=/);
     const dirty = fallbackCinemaHtml({
       ...graphicList,
       clips: graphicList.clips.map((c, i) => (i === 1 ? { ...c, block: "not-a-real-widget", overlay: undefined } : c)),

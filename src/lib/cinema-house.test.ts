@@ -215,7 +215,7 @@ describe("house components meet cinema grade", () => {
     expect(needsCinemaHostGrade("app-showcase")).toBe(true);
     expect(needsCinemaHostGrade("carousel-circle-1")).toBe(true);
     expect(needsCinemaHostGrade("data-chart")).toBe(true);
-    expect(needsCinemaHostGrade("flowchart-vertical")).toBe(true);
+    expect(needsCinemaHostGrade("flowchart-vertical")).toBe(false);
 
     const official = path.join(process.cwd(), "storage/hyperframes-registry/compositions/data-chart.html");
     if (existsSync(official)) {

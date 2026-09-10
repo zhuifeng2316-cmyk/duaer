@@ -171,6 +171,7 @@ describe("registry scene matrix", () => {
     });
     expect(registryMountSize("data-chart")).toEqual({ width: 1920, height: 1080, hostFill: false });
     expect(registryMountSize("flowchart-vertical")).toEqual({ width: 1440, height: 2560, hostFill: false });
+    expect(registryMountSize("flowchart-vertical", { width: 1440, height: 2560 })).toEqual({ hostFill: true });
     expect(registryMountSize("caption-kinetic-slam")).toEqual({ hostFill: true });
     expect(registryMountKind("pull-to-refresh", false)).toBe("registry-overlay");
     expect(registryMountKind("data-chart", true)).toBe("registry-card");
