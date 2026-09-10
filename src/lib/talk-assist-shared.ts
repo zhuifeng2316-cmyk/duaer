@@ -55,6 +55,62 @@ const MODE_TITLE: Record<string, string> = {
   knowledge: "知识输出",
 };
 
+/** 可跨题材点选的独立画面块：代码 / 图表 / 界面等（不限当前口播题材白名单）。 */
+const STANDALONE_RE =
+  /code|terminal|vscode|developer|chart|data|graph|map|mock-ui|showcase|carousel|gallery|checklist|instrument|snippet|终端|代码|图表|流程|地图|清单|轮播|对话露出|产品展示|计数|金额|示波|对照|粒子|着色|立体|滚动|变形/;
+
+function isStandaloneHouse(row: HouseRow): boolean {
+  const blob = [row.label, row.wraps, ...(row.tags || [])].join(" ");
+  return STANDALONE_RE.test(blob);
+}
+
+/** 轮播圆二…轮播视野五等同族变体太多，目录里只留代表名。 */
+function isCrowdedVariant(label: string): boolean {
+  if (label === "轮播") return false;
+  return /^轮播/.test(label) || /果味终端(?!基础)/.test(label) || /代码片段(?!果味终端基础|暗二零二六|光二零二六|高反差$)/.test(label);
+}
+
+function formatModeCatalog(mode: string): string {
+  const rows = HOUSE.filter((row) => row.modes.includes(mode));
+  const blocks = rows.filter((row) => row.kind === "block");
+  const comps = rows.filter((row) => row.kind !== "block");
+  return [
+    `### ${MODE_TITLE[mode] || mode} · 画面块`,
+    blocks.map((row) => `- ${row.label}`).join("\n") || "- （无）",
+    "",
+    `### ${MODE_TITLE[mode] || mode} · 叠层`,
+    comps.map((row) => `- ${row.label}`).join("\n") || "- （无）",
+  ].join("\n");
+}
+
+function formatStandaloneCatalog(primaryMode?: string | null): string {
+  const seen = new Set(
+    primaryMode ? HOUSE.filter((row) => row.modes.includes(primaryMode)).map((row) => row.label) : [],
+  );
+  const groups: { title: string; test: RegExp; labels: string[] }[] = [
+    { title: "代码 / 终端", test: /code|terminal|vscode|developer|终端|代码/, labels: [] },
+    { title: "图表 / 数据 / 地图", test: /chart|data|graph|instrument|map|图表|流程|地图|清单|计数|金额|示波/, labels: [] },
+    { title: "界面 / 轮播 / 展示", test: /mock-ui|showcase|carousel|gallery|轮播|对话|产品|checklist/, labels: [] },
+  ];
+  for (const row of HOUSE) {
+    if (!isStandaloneHouse(row)) continue;
+    if (seen.has(row.label)) continue;
+    if (isCrowdedVariant(row.label)) continue;
+    const blob = [row.label, ...(row.tags || [])].join(" ");
+    const group = groups.find((g) => g.test.test(blob)) || groups[2]!;
+    if (group.labels.includes(row.label)) continue;
+    group.labels.push(row.label);
+    seen.add(row.label);
+  }
+  const body = groups
+    .filter((g) => g.labels.length)
+    .map((g) => `### 可独立用 · ${g.title}\n${g.labels.map((name) => `- ${name}`).join("\n")}`)
+    .join("\n\n");
+  return body
+    ? `以下组件不限当前题材，也可按镜点用（代码、图表、界面等独立画面块）：\n\n${body}`
+    : "";
+}
+
 export function captionCatalogForPrompt(): string {
   return CAPTION_GROUPS.map((group) => {
     const lines = group.rows.map((row) => `- ${row.label}`).join("\n");
@@ -63,21 +119,11 @@ export function captionCatalogForPrompt(): string {
 }
 
 export function graphicCatalogForPrompt(mode?: string | null): string {
-  const modes = mode ? [mode] : ["story", "product", "knowledge"];
-  return modes
-    .map((m) => {
-      const rows = HOUSE.filter((row) => row.modes.includes(m));
-      const blocks = rows.filter((row) => row.kind === "block");
-      const comps = rows.filter((row) => row.kind !== "block");
-      return [
-        `### ${MODE_TITLE[m] || m} · 画面块`,
-        blocks.map((row) => `- ${row.label}`).join("\n") || "- （无）",
-        "",
-        `### ${MODE_TITLE[m] || m} · 叠层`,
-        comps.map((row) => `- ${row.label}`).join("\n") || "- （无）",
-      ].join("\n");
-    })
-    .join("\n\n");
+  if (!mode) {
+    return ["story", "product", "knowledge"].map(formatModeCatalog).join("\n\n");
+  }
+  const parts = [formatModeCatalog(mode), formatStandaloneCatalog(mode)].filter(Boolean);
+  return parts.join("\n\n");
 }
 
 export function resolveHouseByLabel(raw: string): HouseRow | undefined {

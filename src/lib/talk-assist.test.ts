@@ -87,9 +87,15 @@ describe("talk assist", () => {
     expect(catalog).toMatch(/故事口播/);
     expect(catalog).toMatch(/画面块/);
     expect(catalog).toMatch(/叠层/);
+    expect(catalog).toMatch(/可独立用/);
+    expect(catalog).toMatch(/代码 \/ 终端/);
+    expect(catalog).toMatch(/- 代码对照/);
+    expect(catalog).toMatch(/图表 \/ 数据/);
+    expect(catalog).toMatch(/界面 \/ 轮播/);
     const system = buildTalkAssistSystem(sample);
     expect(system).toContain(catalog);
     expect(system).toMatch(/组件目录/);
+    expect(system).toMatch(/可独立用/);
     const labels = houseLabelList().filter((name) => catalog.includes(`- ${name}`));
     expect(labels.length).toBeGreaterThan(50);
     for (const label of labels.slice(0, 30)) {
@@ -116,11 +122,14 @@ describe("talk assist", () => {
   it("mocks graphic recommendations with real house labels", () => {
     const reply = mockTalkAssistReply("有哪些组件推荐？");
     expect(reply).toMatch(/闪白|漏光|手写标题|胶片颗粒/);
+    expect(reply).toMatch(/代码对照/);
     const gfx = extractGraphicRecommendations(reply, 3);
     expect(gfx.length).toBeGreaterThan(0);
     expect(gfx.every((row) => houseLabelList().includes(row.label))).toBe(true);
     expect(gfx.some((row) => row.label === "闪白" || row.label === "漏光")).toBe(true);
+    expect(gfx.some((row) => row.label === "代码对照")).toBe(true);
     const flash = gfx.find((row) => row.label === "闪白");
     expect(flash?.shotIndex).toBe(0);
+    expect(flash?.section).toBe("hook");
   });
 });
