@@ -22,6 +22,12 @@ type GfxFx =
   | "chart"
   | "code"
   | "carousel"
+  | "carouselCircle"
+  | "carouselOrbit"
+  | "carouselPath"
+  | "carouselText"
+  | "carouselVision"
+  | "carouselRail"
   | "chat"
   | "notify"
   | "refresh"
@@ -32,13 +38,21 @@ type GfxFx =
   | "type"
   | "pulse";
 
-function detectFx(label: string, tags?: string[]): GfxFx {
-  const blob = `${label} ${(tags || []).join(" ")}`;
+function detectFx(label: string, tags?: string[], wraps?: string): GfxFx {
+  const blob = `${label} ${wraps || ""} ${(tags || []).join(" ")}`;
   if (/闪白|\bflash\b/.test(blob)) return "flash";
   if (/漏光|light-leak|光漏/.test(blob)) return "leak";
   if (/故障|glitch/.test(blob)) return "glitch";
   if (/胶片|颗粒|grain|film|texture/.test(blob)) return "grain";
-  if (/轮播|carousel|gallery/.test(blob)) return "carousel";
+  if (/轮播|carousel|gallery|screen-flow/.test(blob)) {
+    if (/字圆|text-circle|kinetic-text/.test(blob)) return "carouselText";
+    if (/环绕|orbit/.test(blob)) return "carouselOrbit";
+    if (/路径|path/.test(blob)) return "carouselPath";
+    if (/视野|vision/.test(blob)) return "carouselVision";
+    if (/屏流|rail|slot|screen-flow/.test(blob)) return "carouselRail";
+    if (/圆|circle/.test(blob)) return "carouselCircle";
+    return "carousel";
+  }
   if (/对话|聊天|chat|ai-chat/.test(blob)) return "chat";
   if (/通知|notification|stack/.test(blob)) return "notify";
   if (/下拉|刷新|refresh|gesture/.test(blob)) return "refresh";
@@ -55,10 +69,27 @@ function detectFx(label: string, tags?: string[]): GfxFx {
   return "pulse";
 }
 
+function carouselTone(label: string, wraps?: string): string {
+  const blob = `${label} ${wraps || ""}`;
+  if (/[二2]/.test(blob)) return styles.assistGfxTone2;
+  if (/[三3]/.test(blob)) return styles.assistGfxTone3;
+  if (/[四4]/.test(blob)) return styles.assistGfxTone4;
+  if (/[五5]/.test(blob)) return styles.assistGfxTone5;
+  return styles.assistGfxTone1;
+}
+
 function fxSkin(fx: GfxFx): string {
   if (fx === "chart" || fx === "flow") return styles.assistGfxSkinChart;
   if (fx === "hand" || fx === "checklist") return styles.assistGfxSkinHand;
-  if (fx === "code" || fx === "carousel" || fx === "chat" || fx === "notify" || fx === "refresh" || fx === "cursor" || fx === "ui") {
+  if (
+    fx === "code" ||
+    fx.startsWith("carousel") ||
+    fx === "chat" ||
+    fx === "notify" ||
+    fx === "refresh" ||
+    fx === "cursor" ||
+    fx === "ui"
+  ) {
     return styles.assistGfxSkinUi;
   }
   if (fx === "type" || fx === "highlight") return styles.assistGfxSkinType;
@@ -77,6 +108,12 @@ function fxMot(fx: GfxFx): string {
     chart: styles.assistGfxMotChart,
     code: styles.assistGfxMotCode,
     carousel: styles.assistGfxMotCarousel,
+    carouselCircle: styles.assistGfxMotCarouselCircle,
+    carouselOrbit: styles.assistGfxMotCarouselOrbit,
+    carouselPath: styles.assistGfxMotCarouselPath,
+    carouselText: styles.assistGfxMotCarouselText,
+    carouselVision: styles.assistGfxMotCarouselVision,
+    carouselRail: styles.assistGfxMotCarouselRail,
     chat: styles.assistGfxMotChat,
     notify: styles.assistGfxMotNotify,
     refresh: styles.assistGfxMotRefresh,
@@ -90,10 +127,89 @@ function fxMot(fx: GfxFx): string {
   return map[fx];
 }
 
-function GraphicFxStage({ fx, label }: { fx: GfxFx; label: string }) {
+function GraphicFxStage({
+  fx,
+  label,
+  wraps,
+}: {
+  fx: GfxFx;
+  label: string;
+  wraps?: string;
+}) {
+  const tone = carouselTone(label, wraps);
+  if (fx === "carouselCircle") {
+    return (
+      <div className={`${styles.assistGfxCarCircle} ${tone}`} aria-hidden>
+        <div className={styles.assistGfxCarCircleRing}>
+          <span />
+          <span />
+          <span />
+          <span />
+          <span />
+        </div>
+        <em>圆</em>
+      </div>
+    );
+  }
+  if (fx === "carouselOrbit") {
+    return (
+      <div className={`${styles.assistGfxCarOrbit} ${tone}`} aria-hidden>
+        <i />
+        <i />
+        <i />
+        <b />
+      </div>
+    );
+  }
+  if (fx === "carouselPath") {
+    return (
+      <div className={`${styles.assistGfxCarPath} ${tone}`} aria-hidden>
+        <span />
+        <span />
+        <span />
+        <span />
+      </div>
+    );
+  }
+  if (fx === "carouselText") {
+    return (
+      <div className={`${styles.assistGfxCarText} ${tone}`} aria-hidden>
+        <div className={styles.assistGfxCarTextRing}>
+          <b>口</b>
+          <b>播</b>
+          <b>字</b>
+          <b>圆</b>
+          <b>转</b>
+          <b>场</b>
+        </div>
+      </div>
+    );
+  }
+  if (fx === "carouselVision") {
+    return (
+      <div className={`${styles.assistGfxCarVision} ${tone}`} aria-hidden>
+        <span />
+        <span />
+        <span />
+      </div>
+    );
+  }
+  if (fx === "carouselRail") {
+    return (
+      <div className={`${styles.assistGfxCarRail} ${tone}`} aria-hidden>
+        <div className={styles.assistGfxCarRailTrack}>
+          <span />
+          <span />
+          <span />
+          <span />
+          <span />
+        </div>
+      </div>
+    );
+  }
   if (fx === "carousel") {
     return (
-      <div className={styles.assistGfxCarousel} aria-hidden>
+      <div className={`${styles.assistGfxCarousel} ${tone}`} aria-hidden>
         <div className={styles.assistGfxCarouselTrack}>
           <span>1</span>
           <span>2</span>
@@ -242,7 +358,7 @@ export function AssistGraphicRecCards({
         const allKey = `${rec.wraps}:all:${rec.shotIndex ?? "all"}`;
         const selected = appliedKey === shotKey || appliedKey === allKey;
         const kindLabel = rec.kind === "block" ? "画面块" : "叠层";
-        const fx = detectFx(rec.label, rec.tags);
+        const fx = detectFx(rec.label, rec.tags, rec.wraps);
         const hostLike = /carousel|chat|notify|refresh|cursor|checklist|flow|chart|code|ui/.test(fx);
         return (
           <article
@@ -266,7 +382,7 @@ export function AssistGraphicRecCards({
                 </span>
               )}
               <div className={`${styles.assistGfxPreview} ${fxSkin(fx)} ${fxMot(fx)}`} aria-hidden>
-                <GraphicFxStage fx={fx} label={rec.label} />
+                <GraphicFxStage fx={fx} label={rec.label} wraps={rec.wraps} />
                 <div className={styles.assistGfxCopy}>
                   <span className={styles.assistGfxKind}>{kindLabel}</span>
                   <p className={styles.assistGfxLabel}>{rec.label}</p>

@@ -95,7 +95,8 @@ describe("c-end copy has no vendor names", () => {
     expect(pageCss).toMatch(/assistGfxList/);
     expect(pageCss).toMatch(/assistGfxMotFlash/);
     expect(pageCss).toMatch(/assistGfxCarousel/);
-    expect(assistGfx).toMatch(/assistGfxMotCarousel|detectFx|GraphicFxStage/);
+    expect(pageCss).toMatch(/assistGfxCarOrbit|assistGfxCarPath|assistGfxCarVision/);
+    expect(assistGfx).toMatch(/carouselOrbit|carouselPath|carouselVision|carouselCircle/);
     expect(workspace).toMatch(/styles\.talkWork/);
     expect(workspace).toMatch(/assistRecommendations/);
     expect(workspace).toMatch(/assistGraphics/);
