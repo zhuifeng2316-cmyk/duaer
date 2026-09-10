@@ -157,4 +157,21 @@ describe("smart registry pick", () => {
     expect(gt.l1).toBe("眼前快乐");
     expect(gt.l2).toBe("花钱代价");
   });
+
+  it("fills share-sheet with Chinese action chrome", () => {
+    const defs = readRegistryVariables("share-sheet-carousel");
+    const vars = fillRegistryVars(defs, {
+      onScreenText: "分享出去",
+      voiceover: "把这条发出去",
+      graphicIntent: "分享面板",
+    });
+    expect(vars.acceptLabel).toBe("接受");
+    expect(vars.declineLabel).toBe("拒绝");
+    expect(vars.itemLabel).toBe("一条口播");
+    expect(vars.stripText).toBe("分享出去");
+    expect(String(vars.acceptLabel)).not.toMatch(/Accept/i);
+    expect(String(vars.declineLabel)).not.toMatch(/Decline/i);
+    expect(String(vars.itemLabel)).not.toMatch(/video/i);
+    expect(String(vars.stripText)).not.toMatch(/OPEN-SOURCE/i);
+  });
 });

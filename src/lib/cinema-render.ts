@@ -2,9 +2,10 @@ import { spawn } from "child_process";
 import { accessSync, constants as fsConstants } from "fs";
 import { copyFile, cp, lstat, mkdir, readdir, readFile, stat, symlink, writeFile } from "fs/promises";
 import path from "path";
+import { writeHouseGraphicPlaceholders } from "./duaer-registry";
 import { parseQuality } from "./aspect";
 import { talkPicturesReady } from "./graphic-board";
-import { assembleFinal, makePlaceholderStill, makeStillClip } from "./compose";
+import { assembleFinal, ensureMp4Faststart, makePlaceholderStill, makeStillClip } from "./compose";
 import { shotNeedsPersonStill } from "./graphic-board";
 import { isFlowMock } from "./flow/config";
 import { compileDirector } from "./director-compile";
@@ -166,6 +167,7 @@ export async function renderHtmlVideo(opts: { composeDir: string; outputPath: st
   );
   const st = await stat(opts.outputPath);
   if (!st.isFile() || st.size < 2000) throw new Error("成片文件太小");
+  await ensureMp4Faststart(opts.outputPath);
 }
 
 function snapshotStamp(atSec: number): string {
@@ -332,6 +334,10 @@ export async function writeAndRenderCinema(projectId: string, opts?: { reuseHtml
     speechRel,
     bgmRel,
     captionStyle: project.captionStyle,
+  });
+  await writeHouseGraphicPlaceholders(projectId, script, project.aspect, {
+    idea: project.idea,
+    quality: parseQuality(project.quality),
   });
   const composeHtml = projectFile(projectId, "compose/index.html");
   let html: string;

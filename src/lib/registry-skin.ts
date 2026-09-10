@@ -10,6 +10,7 @@ const BAKED_COPY = new Set([
   "code-terminal-run",
   "carousel-circle-1",
   "marker-checklist-card",
+  "share-sheet-carousel",
 ]);
 
 export function needsRegistryCopySkin(name?: string): boolean {
@@ -169,6 +170,20 @@ export function skinRegistryHtml(name: string, html: string, copy: { title: stri
       ['"SHIP"', '"三项"'],
       ['"TODAY"', '"算过"'],
     ]);
+  } else if (name === "share-sheet-carousel") {
+    next = applyPairs(next, [
+      [" would like to share ", " 想分享 "],
+      ['"a video"', '"一条口播"'],
+      ["a video", "一条口播"],
+      [">Accept<", ">接受<"],
+      [">Decline<", ">拒绝<"],
+      ["Accept</div>", "接受</div>"],
+      ["Decline</div>", "拒绝</div>"],
+      ['"Accept"', '"接受"'],
+      ['"Decline"', '"拒绝"'],
+      ['"Share"', JSON.stringify(title.slice(0, 8) || "分享")],
+      ["OPEN-SOURCE VIDEO ENGINE · SHIP FROM HTML", title.slice(0, 18) || "口播成片"],
+    ]);
   }
   return paintCinemaAccents(next);
 }
@@ -192,4 +207,4 @@ export function visibleRegistryCopy(html: string): string {
 }
 
 export const HOUSE_DEMO_ENGLISH =
-  /Monthly Revenue|Should I learn|shine like the star you are|Pull to refresh|Unleash Full Potential|James Medrano|Alex shared a draft|Start with Pythom|Every great video starts|HyperFrames lets you|THE POWER|IN 4K|SHIP TODAY/i;
+  /Monthly Revenue|Should I learn|shine like the star you are|Pull to refresh|Unleash Full Potential|James Medrano|Alex shared a draft|Start with Pythom|Every great video starts|HyperFrames lets you|THE POWER|IN 4K|SHIP TODAY|would like to share|OPEN-SOURCE VIDEO ENGINE/i;

@@ -30,7 +30,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const reply = await runTalkAssist(project, messages);
     return NextResponse.json({
       reply,
-      recommendations: extractCaptionRecommendations(reply),
+      recommendations: extractCaptionRecommendations(reply, project.script?.shots.length || 0),
     });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "助手这次没接上" }, { status: 500 });

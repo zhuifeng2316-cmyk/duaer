@@ -379,6 +379,22 @@ export function fillRegistryVars(defs: RegistryVar[], shot: Pick<Shot, "onScreen
       out[def.id] = "口播";
       continue;
     }
+    if (/^acceptLabel$/i.test(def.id)) {
+      out[def.id] = "接受";
+      continue;
+    }
+    if (/^declineLabel$/i.test(def.id)) {
+      out[def.id] = "拒绝";
+      continue;
+    }
+    if (/^itemLabel$/i.test(def.id)) {
+      out[def.id] = "一条口播";
+      continue;
+    }
+    if (/^stripText$/i.test(def.id)) {
+      out[def.id] = chineseCopy(shot.onScreenText, "口播成片");
+      continue;
+    }
     if (def.id === "titles") {
       out[def.id] = chineseCopy(shot.onScreenText, "提醒");
       continue;

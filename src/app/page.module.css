@@ -2476,6 +2476,105 @@
   aspect-ratio: 16 / 9;
 }
 
+.assistRecRow .coverThumb {
+  min-width: 0;
+}
+
+.assistRecRow .coverThumbLabel {
+  font-size: 12px;
+}
+
+.assistStyleCard {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.assistStyleName {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #f3eadf;
+}
+
+.assistStyleShot {
+  margin: 0;
+  font-size: 11px;
+  color: #9a8d80;
+}
+
+.assistStyleActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.assistStyleBtn,
+.assistStyleBtnPrimary {
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.assistStyleBtn {
+  border: 1px solid rgba(232, 201, 168, 0.28);
+  background: transparent;
+  color: #f3eadf;
+}
+
+.assistStyleBtnPrimary {
+  border: 1px solid rgba(217, 133, 74, 0.55);
+  background: rgba(217, 133, 74, 0.18);
+  color: #f7efe4;
+}
+
+.assistStyleBtn:disabled,
+.assistStyleBtnPrimary:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.assistStageHint {
+  margin: 0;
+  flex-shrink: 0;
+  color: #9a8d80;
+  font-size: 12px;
+}
+
+.assistStageRecs {
+  display: grid;
+  gap: 10px;
+  padding: 4px 0 14px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(232, 201, 168, 0.16);
+}
+
+.assistStageHead {
+  display: grid;
+  gap: 4px;
+}
+
+.assistStageTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #f3eadf;
+}
+
+.assistStageLede {
+  margin: 0;
+  font-size: 12px;
+  color: #9a8d80;
+  line-height: 1.45;
+}
+
+.assistStageGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
 .assistRecBtn {
   border: 1px solid rgba(217, 133, 74, 0.45);
   background: rgba(217, 133, 74, 0.12);

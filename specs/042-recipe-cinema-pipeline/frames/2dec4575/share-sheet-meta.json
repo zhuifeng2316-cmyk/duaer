@@ -1,0 +1,23 @@
+{
+  "id": "2dec4575-e23f-4fb5-a396-7875980496f8",
+  "shot": 1,
+  "intent": "分享面板",
+  "onScreen": "分享出去",
+  "tag": "share-sheet",
+  "graphic": "share-sheet-carousel",
+  "sample": 3.91,
+  "dest": "/Users/morgan/project/AIvideo/specs/042-recipe-cinema-pipeline/frames/2dec4575/share-sheet_3_91.jpg",
+  "vars": {
+    "shareTitle": "分享出去",
+    "senderName": "口播",
+    "itemLabel": "一条口播",
+    "stripText": "分享出去",
+    "acceptLabel": "接受",
+    "declineLabel": "拒绝",
+    "slideImage1": "graphics/share-sheet-carousel-slideImage1.png",
+    "slideImage2": "graphics/share-sheet-carousel-slideImage2.png",
+    "slideImage3": "graphics/share-sheet-carousel-slideImage3.png",
+    "slideImage4": "graphics/share-sheet-carousel-slideImage4.png",
+    "brandLogo": "graphics/share-sheet-carousel-brandLogo.png"
+  }
+}

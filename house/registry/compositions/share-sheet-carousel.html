@@ -289,8 +289,8 @@
             <div id="ssc-hdivider"></div>
             <div id="ssc-presscell"></div>
             <div id="ssc-vdivider"></div>
-            <div id="ssc-decline" class="ssc-btn">Decline</div>
-            <div id="ssc-accept" class="ssc-btn">Accept</div>
+            <div id="ssc-decline" class="ssc-btn">拒绝</div>
+            <div id="ssc-accept" class="ssc-btn">接受</div>
           </div>
         </div>
       </section>
@@ -312,21 +312,21 @@
           return t.length > 60 ? t.slice(0, 60) : t;
         }
 
-        document.getElementById("ssc-title").textContent = text(vars.shareTitle, "Share");
+        document.getElementById("ssc-title").textContent = text(vars.shareTitle, "分享");
         var subtitle = document.getElementById("ssc-subtitle");
         subtitle.innerHTML = "";
         var sender = document.createElement("b");
         sender.textContent = text(vars.senderName, "口播");
         subtitle.appendChild(sender);
         subtitle.appendChild(
-          document.createTextNode(" would like to share " + text(vars.itemLabel, "a video")),
+          document.createTextNode(" 想分享 " + text(vars.itemLabel, "一条口播")),
         );
         document.getElementById("ssc-strip-text").textContent = text(
           vars.stripText,
-          "OPEN-SOURCE VIDEO ENGINE · SHIP FROM HTML",
+          "口播成片",
         );
-        document.getElementById("ssc-decline").textContent = text(vars.declineLabel, "Decline");
-        document.getElementById("ssc-accept").textContent = text(vars.acceptLabel, "Accept");
+        document.getElementById("ssc-decline").textContent = text(vars.declineLabel, "拒绝");
+        document.getElementById("ssc-accept").textContent = text(vars.acceptLabel, "接受");
 
         /* -------- timeline: spring entry and cut rhythm measured from the reference -------- */
         window.__timelines = window.__timelines || {};

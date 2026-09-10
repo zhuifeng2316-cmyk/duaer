@@ -6,6 +6,7 @@ import {
   captionCatalogForPrompt,
   extractCaptionRecommendations,
   mockTalkAssistReply,
+  sectionShotIndex,
 } from "./talk-assist";
 import type { Project } from "./types";
 
@@ -26,6 +27,28 @@ const sample = {
         durationSec: 3,
         motion: "punch",
         kind: "wide",
+        layout: "hero",
+        stillRefs: [],
+      },
+      {
+        scene: "餐桌",
+        imagePrompt: "",
+        onScreenText: "平安就是福气",
+        voiceover: "平安就是福气",
+        durationSec: 3,
+        motion: "push",
+        kind: "close",
+        layout: "hero",
+        stillRefs: [],
+      },
+      {
+        scene: "床沿",
+        imagePrompt: "",
+        onScreenText: "先照顾好自己",
+        voiceover: "先照顾好自己",
+        durationSec: 3,
+        motion: "hold",
+        kind: "close",
         layout: "hero",
         stillRefs: [],
       },
@@ -51,15 +74,23 @@ describe("talk assist", () => {
     const system = buildTalkAssistSystem(sample);
     expect(system).toMatch(/人到中年/);
     expect(system).toContain(catalog);
+    expect(system).toMatch(/钩子 \/ 中段 \/ 收尾/);
     expect(system).not.toMatch(/DeepSeek|GPT|方舟|HyperFrames/i);
   });
 
-  it("mocks caption recommendations with real catalog names", () => {
+  it("mocks caption recommendations with real catalog names and shot context", () => {
     const reply = mockTalkAssistReply("有哪些字幕推荐？");
     expect(reply).toMatch(/砸字/);
     expect(reply).toMatch(/霓虹字/);
-    const recs = extractCaptionRecommendations(reply);
+    expect(reply).toMatch(/钩子/);
+    const recs = extractCaptionRecommendations(reply, 3);
     expect(recs.map((r) => r.label)).toEqual(expect.arrayContaining(["砸字", "霓虹字", "划重点"]));
     expect(recs.every((r) => CAPTION_STYLES.some((row) => row.id === r.id))).toBe(true);
+    const slam = recs.find((r) => r.label === "砸字");
+    expect(slam?.shotIndex).toBe(0);
+    expect(slam?.section).toBe("hook");
+    const highlight = recs.find((r) => r.label === "划重点");
+    expect(highlight?.section).toBe("mid");
+    expect(highlight?.shotIndex).toBe(sectionShotIndex("mid", 3));
   });
 });

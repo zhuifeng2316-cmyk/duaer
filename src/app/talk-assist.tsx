@@ -2,46 +2,37 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AssistMarkdown } from "@/lib/assist-markdown";
-import { captionStyleMeta } from "@/lib/caption-styles";
-import { CaptionStyleTile, captionPreviewLines } from "./talk-workspace";
+import type { CaptionRecommendation } from "@/lib/talk-assist";
+import { AssistCaptionRecCards, type AssistShotPreview } from "./assist-caption-recs";
 import styles from "./page.module.css";
 
-type Recommend = { id: string; label: string };
-type ChatTurn = { role: "user" | "assistant"; content: string; recommendations?: Recommend[] };
+type ChatTurn = { role: "user" | "assistant"; content: string; recommendations?: CaptionRecommendation[] };
 
-export function TalkAssistPanel({ talkId }: { talkId: string }) {
+export function TalkAssistPanel({
+  talkId,
+  recommendations,
+  onRecommendations,
+  onApplied,
+  shots,
+  frameClass,
+}: {
+  talkId: string;
+  recommendations: CaptionRecommendation[];
+  onRecommendations: (recs: CaptionRecommendation[]) => void;
+  onApplied?: () => void;
+  shots: AssistShotPreview[];
+  frameClass: string;
+}) {
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [applyNote, setApplyNote] = useState("");
-  const [stillSrc, setStillSrc] = useState("");
-  const [sampleText, setSampleText] = useState("口播字");
   const endRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [turns, busy]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void fetch(`/api/projects/${talkId}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (cancelled || !data) return;
-        const stills = Array.isArray(data.stillUrls) ? data.stillUrls : [];
-        const still = stills.find((url: unknown) => typeof url === "string" && url) || data.coverUrl || "";
-        const hook = data.script?.hook || "";
-        const shotText = data.script?.shots?.[0]?.onScreenText || "";
-        const text = hook || shotText || data.idea || "口播字";
-        setStillSrc(typeof still === "string" ? still : "");
-        setSampleText(String(text));
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [talkId]);
+  }, [turns, busy, recommendations]);
 
   async function send(text?: string) {
     const content = (text ?? draft).trim();
@@ -52,6 +43,7 @@ export function TalkAssistPanel({ talkId }: { talkId: string }) {
     setBusy(true);
     setError("");
     setApplyNote("");
+    onRecommendations([]);
     try {
       const res = await fetch(`/api/projects/${talkId}/assist`, {
         method: "POST",
@@ -60,17 +52,22 @@ export function TalkAssistPanel({ talkId }: { talkId: string }) {
           messages: nextTurns.map(({ role, content: body }) => ({ role, content: body })),
         }),
       });
-      const data = (await res.json()) as { reply?: string; recommendations?: Recommend[]; error?: string };
+      const data = (await res.json()) as {
+        reply?: string;
+        recommendations?: CaptionRecommendation[];
+        error?: string;
+      };
       if (!res.ok) throw new Error(data.error || "助手这次没接上");
-      const recommendations = Array.isArray(data.recommendations) ? data.recommendations : [];
+      const recs = Array.isArray(data.recommendations) ? data.recommendations : [];
       setTurns([
         ...nextTurns,
         {
           role: "assistant",
           content: data.reply || "",
-          recommendations,
+          recommendations: recs,
         },
       ]);
+      onRecommendations(recs);
     } catch (err) {
       setError(err instanceof Error ? err.message : "助手这次没接上");
     } finally {
@@ -78,29 +75,40 @@ export function TalkAssistPanel({ talkId }: { talkId: string }) {
     }
   }
 
-  async function applyStyle(id: string, label: string) {
+  async function applyStyle(rec: CaptionRecommendation, target: "shot" | "all") {
     setApplyNote("");
     try {
+      const body =
+        target === "shot" && typeof rec.shotIndex === "number"
+          ? { style: rec.id, shotIndex: rec.shotIndex }
+          : { style: rec.id };
       const res = await fetch(`/api/projects/${talkId}/captions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ style: id }),
+        body: JSON.stringify(body),
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data.error || "字幕没改上");
-      setApplyNote(`已用到全片 · ${label}`);
+      setApplyNote(
+        target === "shot" && typeof rec.shotIndex === "number"
+          ? `已用到镜${rec.shotIndex + 1} · ${rec.label}`
+          : `已用到全片 · ${rec.label}`,
+      );
+      onApplied?.();
     } catch (err) {
       setApplyNote(err instanceof Error ? err.message : "字幕没改上");
     }
   }
 
-  const previewLines = captionPreviewLines(sampleText);
+  const latestRecs =
+    [...turns].reverse().find((turn) => turn.role === "assistant" && turn.recommendations?.length)?.recommendations ||
+    recommendations;
 
   return (
     <aside className={styles.assistRail} aria-label="口播助手">
       <div className={styles.assistHead}>
         <h2 className={styles.assistTitle}>助手</h2>
-        <p className={styles.assistLede}>可问字幕怎么选，只从本站目录推荐。</p>
+        <p className={styles.assistLede}>可问字幕怎么选，预览会叠到对应故事片上。</p>
       </div>
       <div className={styles.assistPrompts}>
         <button type="button" className={styles.assistChip} disabled={busy} onClick={() => send("有哪些字幕推荐？")}>
@@ -121,27 +129,15 @@ export function TalkAssistPanel({ talkId }: { talkId: string }) {
             </div>
             {turn.role === "assistant" && turn.recommendations?.length ? (
               <div className={styles.assistRecs}>
-                <p className={styles.assistRecLabel}>点样式用到全片</p>
-                <div className={styles.assistRecRow}>
-                  {turn.recommendations.map((row) => {
-                    const meta = captionStyleMeta(row.id);
-                    if (!meta) return null;
-                    return (
-                      <CaptionStyleTile
-                        key={row.id}
-                        id={row.id}
-                        label={row.label}
-                        preview={meta.preview}
-                        lines={previewLines}
-                        stillSrc={stillSrc}
-                        frameClass={`${styles.wide} ${styles.assistRecFrame}`}
-                        selected={false}
-                        disabled={busy}
-                        onPick={() => void applyStyle(row.id, row.label)}
-                      />
-                    );
-                  })}
-                </div>
+                <p className={styles.assistRecLabel}>叠在对应故事片上 · 可点用</p>
+                <AssistCaptionRecCards
+                  recommendations={turn.recommendations}
+                  shots={shots}
+                  frameClass={`${frameClass} ${styles.assistRecFrame}`}
+                  dense
+                  busy={busy}
+                  onApply={(rec, target) => void applyStyle(rec, target)}
+                />
               </div>
             ) : null}
           </div>
@@ -150,6 +146,9 @@ export function TalkAssistPanel({ talkId }: { talkId: string }) {
         {applyNote ? <p className={styles.assistNote}>{applyNote}</p> : null}
         <div ref={endRef} />
       </div>
+      {latestRecs.length ? (
+        <p className={styles.assistStageHint}>右侧内容区也能对照预览</p>
+      ) : null}
       {error ? <p className={styles.err}>{error}</p> : null}
       <form
         className={styles.assistForm}

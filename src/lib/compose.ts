@@ -24,6 +24,21 @@ export async function assertFfmpeg(): Promise<void> {
   await run("ffmpeg", ["-version"]);
 }
 
+/** Put moov at the front so browsers can seek before full download. */
+export async function ensureMp4Faststart(file: string): Promise<void> {
+  const tmp = `${file}.faststart.mp4`;
+  try {
+    await run("ffmpeg", ["-y", "-i", file, "-c", "copy", "-movflags", "+faststart", tmp]);
+    await rename(tmp, file);
+  } catch {
+    try {
+      await unlink(tmp);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 async function ffmpegHasFilter(name: string): Promise<boolean> {
   return new Promise((resolve) => {
     const child = spawn("ffmpeg", ["-hide_banner", "-filters"], { stdio: ["ignore", "pipe", "pipe"] });
@@ -373,7 +388,7 @@ export async function assembleFinal(opts: {
     }
   }
 
-  const tail = [...video, "-t", String(opts.durationSec), "-c:a", "aac", "-shortest", outName];
+  const tail = [...video, "-t", String(opts.durationSec), "-c:a", "aac", "-movflags", "+faststart", "-shortest", outName];
 
   if (speechRel && bgmRel) {
     await run(
@@ -403,7 +418,7 @@ export async function assembleFinal(opts: {
 
   await run(
     "ffmpeg",
-    ["-y", "-i", "final.concat.mp4", ...video, "-t", String(opts.durationSec), "-an", outName],
+    ["-y", "-i", "final.concat.mp4", ...video, "-t", String(opts.durationSec), "-an", "-movflags", "+faststart", outName],
     workDir,
   );
 }

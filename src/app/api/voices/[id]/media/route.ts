@@ -1,6 +1,6 @@
-import { readFile } from "fs/promises";
 import path from "path";
 import { NextResponse } from "next/server";
+import { mediaFileResponse } from "@/lib/media-range";
 import { ensureHousePreview } from "@/lib/house-preview";
 import { isHouseVoiceId } from "@/lib/house-voices";
 import { readVoice, safeVoiceMediaPath } from "@/lib/voice-store";
@@ -15,21 +15,13 @@ const MIME: Record<string, string> = {
   ".aiff": "audio/aiff",
 };
 
-export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   if (isHouseVoiceId(id)) {
     try {
       const abs = await ensureHousePreview(id);
-      const buf = await readFile(abs);
       const ext = path.extname(abs).toLowerCase();
-      return new NextResponse(buf, {
-        headers: {
-          "Content-Type": MIME[ext] || "audio/wav",
-          "Content-Length": String(buf.byteLength),
-          "Accept-Ranges": "bytes",
-          "Cache-Control": "private, max-age=86400",
-        },
-      });
+      return await mediaFileResponse(abs, req, MIME[ext] || "audio/wav", "private, max-age=86400");
     } catch {
       return NextResponse.json({ error: "这条暂时听不了" }, { status: 503 });
     }
@@ -39,16 +31,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const abs = safeVoiceMediaPath(id, voice.sample);
   if (!abs) return NextResponse.json({ error: "非法路径" }, { status: 400 });
   try {
-    const buf = await readFile(abs);
     const ext = abs.slice(abs.lastIndexOf(".")).toLowerCase();
-    return new NextResponse(buf, {
-      headers: {
-        "Content-Type": MIME[ext] || "audio/mpeg",
-        "Content-Length": String(buf.byteLength),
-        "Accept-Ranges": "bytes",
-        "Cache-Control": "private, no-store",
-      },
-    });
+    return await mediaFileResponse(abs, req, MIME[ext] || "audio/mpeg");
   } catch {
     return NextResponse.json({ error: "文件不存在" }, { status: 404 });
   }

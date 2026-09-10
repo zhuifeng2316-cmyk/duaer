@@ -41,6 +41,8 @@ import {
 import { COVER_TEMPLATES, coverTitle, parseCoverTemplate, wrapCoverTitle } from "@/lib/cover-templates";
 import type { PublicProject } from "@/lib/types";
 import { isProduceDockPhase, PRODUCE_STEPS, produceStepIndex } from "@/lib/talk-progress";
+import type { CaptionRecommendation } from "@/lib/talk-assist";
+import { AssistCaptionRecCards } from "./assist-caption-recs";
 import styles from "./page.module.css";
 
 type Shot = {
@@ -557,7 +559,21 @@ function CoverStylePreview({
   );
 }
 
-export function TalkWorkspace({ talkId }: { talkId: string }) {
+export function TalkWorkspace({
+  talkId,
+  assistRecommendations = [],
+  assistShots = [],
+  assistFrameClass = "",
+  assistRefreshTick = 0,
+  onAssistApply,
+}: {
+  talkId: string;
+  assistRecommendations?: CaptionRecommendation[];
+  assistShots?: { stillUrl: string; text: string }[];
+  assistFrameClass?: string;
+  assistRefreshTick?: number;
+  onAssistApply?: () => void;
+}) {
   const [project, setProject] = useState<PublicProject | null>(null);
   const [error, setError] = useState("");
   const [confirmingCopy, setConfirmingCopy] = useState(false);
@@ -589,7 +605,7 @@ export function TalkWorkspace({ talkId }: { talkId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [talkId]);
+  }, [talkId, assistRefreshTick]);
 
   useEffect(() => {
     if (project?.coverTemplate) setCoverTemplate(parseCoverTemplate(project.coverTemplate));
@@ -751,6 +767,31 @@ export function TalkWorkspace({ talkId }: { talkId: string }) {
     }
   }
 
+  async function applyAssistCaption(rec: CaptionRecommendation, target: "shot" | "all") {
+    if (!project) return;
+    setCaptionBusy(true);
+    setError("");
+    try {
+      const body =
+        target === "shot" && typeof rec.shotIndex === "number"
+          ? { style: rec.id, shotIndex: rec.shotIndex }
+          : { style: rec.id };
+      const res = await fetch(`/api/projects/${project.id}/captions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "字幕没换上");
+      if (data.project) setProject(data.project);
+      onAssistApply?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "字幕没换上");
+    } finally {
+      setCaptionBusy(false);
+    }
+  }
+
   async function patchGraphic(body: FormData | Record<string, unknown>) {
     if (!project || !canEditGraphic) return;
     setGraphicBusy(true);
@@ -824,6 +865,28 @@ export function TalkWorkspace({ talkId }: { talkId: string }) {
   return (
     <section className={styles.talkWork}>
       <div className={styles.panel}>
+        {assistRecommendations.length ? (
+          <div className={styles.assistStageRecs} aria-label="助手字幕预览">
+            <div className={styles.assistStageHead}>
+              <p className={styles.assistStageTitle}>助手推荐样式</p>
+              <p className={styles.assistStageLede}>叠在对应故事片上预览，可只用这一镜或用到全片</p>
+            </div>
+            <AssistCaptionRecCards
+              recommendations={assistRecommendations}
+              shots={
+                assistShots.length
+                  ? assistShots
+                  : (project?.script?.shots || []).map((shot, i) => ({
+                      stillUrl: project?.stillUrls[i] || "",
+                      text: shot.onScreenText || shot.voiceover || project?.idea || "口播字",
+                    }))
+              }
+              frameClass={assistFrameClass || posterClass(project?.aspect || "9:16")}
+              busy={captionBusy || producing}
+              onApply={(rec, target) => void applyAssistCaption(rec, target)}
+            />
+          </div>
+        ) : null}
         <p className={styles.talkIdea}>{project.idea}</p>
         {!showProduceDock ? (
           <div className={styles.bar}>

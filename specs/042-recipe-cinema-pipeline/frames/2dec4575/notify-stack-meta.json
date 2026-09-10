@@ -1,0 +1,17 @@
+{
+  "id": "2dec4575-e23f-4fb5-a396-7875980496f8",
+  "shot": 2,
+  "intent": "通知堆",
+  "onScreen": "三条提醒",
+  "tag": "notify-stack",
+  "graphic": "notification-stack",
+  "sample": 6.42,
+  "dest": "/Users/morgan/project/AIvideo/specs/042-recipe-cinema-pipeline/frames/2dec4575/notify-stack_6_42.jpg",
+  "vars": {
+    "titles": "三条提醒",
+    "bodies": "三张界面轮播 一次看清",
+    "expand": -1,
+    "accent": "green",
+    "exit": "none"
+  }
+}
