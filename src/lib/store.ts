@@ -1,7 +1,8 @@
 import { mkdir, readdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 import { v4 as uuid } from "uuid";
-import type { Aspect } from "./aspect";
+import type { Aspect, OutputQuality } from "./aspect";
+import { parseQuality } from "./aspect";
 import type { Project } from "./types";
 
 const ROOT = path.join(process.cwd(), "storage", "projects");
@@ -25,16 +26,20 @@ export async function createProject(input: {
   idea: string;
   look: string;
   aspect: Aspect;
+  quality?: OutputQuality;
   targetDurationSec: number;
+  topic?: string | null;
 }): Promise<Project> {
   const id = uuid();
   const project: Project = {
     id,
     createdAt: new Date().toISOString(),
     idea: input.idea,
+    topic: input.topic || null,
     look: input.look,
     targetDurationSec: input.targetDurationSec,
     aspect: input.aspect,
+    quality: parseQuality(input.quality),
     photos: [],
     characterIds: [],
     voiceId: null,
@@ -52,7 +57,12 @@ export async function createProject(input: {
     error: null,
     musicError: null,
     speechError: null,
+    composeError: null,
     finalPath: null,
+    coverPath: null,
+    coverRev: 0,
+    coverTemplate: "titlecard-lockup",
+    captionStyle: "",
   };
   await mkdir(projectDir(id), { recursive: true });
   await writeFile(projectFile(id, "project.json"), JSON.stringify(project, null, 2), "utf8");

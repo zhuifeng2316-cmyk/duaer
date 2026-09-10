@@ -7,6 +7,7 @@ export default defineConfig({
     environment: "node",
     env: {
       DUAER_SQLITE: path.join(os.tmpdir(), "duaer-vitest.sqlite"),
+      BILLING_UNLOCK: "1",
     },
   },
   resolve: {

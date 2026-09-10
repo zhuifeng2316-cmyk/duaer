@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isProduceBusy, startRegenStill } from "@/lib/pipeline";
 import { readProject, updateProject } from "@/lib/store";
+import { shotNeedsPersonStill } from "@/lib/graphic-board";
 import { publicProject } from "@/lib/types";
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -25,8 +26,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (!Number.isInteger(shotIndex) || shotIndex < 0 || shotIndex >= (project.script?.shots.length || 0)) {
     return NextResponse.json({ error: "这一镜不在" }, { status: 400 });
   }
-  if (!project.stills[shotIndex]) {
-    return NextResponse.json({ error: "这一镜还没有画面，不能重做" }, { status: 400 });
+  const shot = project.script?.shots[shotIndex];
+  if (!shot || !shotNeedsPersonStill(shot) || !project.stills[shotIndex]) {
+    return NextResponse.json({ error: "这一镜没有人物底，不能重做" }, { status: 400 });
   }
   const saved = await updateProject(id, {
     status: "running",

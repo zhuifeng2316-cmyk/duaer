@@ -1,10 +1,19 @@
-import { readFile } from "fs/promises";
-import type { Aspect } from "../aspect";
-import { ASPECT_SIZE } from "../aspect";
-import { CINEMA_IDENTITY_LEAD, CINEMA_STILL_LOCK, CINEMA_WARDROBE_LOCK } from "../cinema";
+import { mkdir, readFile, writeFile } from "fs/promises";
+import path from "path";
+import { aspectSize, parseQuality, type Aspect, type OutputQuality } from "../aspect";
+import { CINEMA_IDENTITY_LEAD, CINEMA_STILL_LOCK, CINEMA_WARDROBE_LOCK, DEFAULT_CINEMA_LOOK, cinemaPosterCopy, stripBoardLettering } from "../cinema";
 import { shotAsksForOthers } from "../cast";
 import { generateStillFromRef } from "../ark/image";
 import { arkImageEndpoint } from "../ark/config";
+import {
+  authHeaders,
+  getFlowApiKey,
+  getFlowBaseUrl,
+  getImageModel,
+  mapFlowHttpError,
+  readFlowJson,
+} from "./config";
+import { extractChatImage } from "./json";
 
 export { generateStillFromRef } from "../ark/image";
 export { arkImageEndpoint } from "../ark/config";
@@ -49,11 +58,13 @@ export function cloneImagePrompt(opts: {
   aspect: Aspect;
   look?: string;
   imagePrompt?: string;
+  onScreenText?: string;
   peopleCount?: number;
+  quality?: OutputQuality;
 }): string {
-  const { width, height } = ASPECT_SIZE[opts.aspect];
-  const look = (opts.look || "").trim();
-  const frame = (opts.imagePrompt || opts.scene).trim();
+  const { width, height } = aspectSize(opts.aspect, parseQuality(opts.quality));
+  const look = (opts.look || "").trim() || DEFAULT_CINEMA_LOOK;
+  const frame = stripBoardLettering((opts.imagePrompt || opts.scene).trim());
   const people = Math.max(1, opts.peopleCount || 1);
   const extras = shotAsksForOthers(frame);
   const lock =
@@ -79,11 +90,12 @@ export function cloneImagePrompt(opts: {
           ].join("");
   return [
     "只生成一张图，不要文字回复。",
-    `画幅 ${opts.aspect}，像素 ${width}x${height}，无水印、画面上不要字。`,
+    `画幅 ${opts.aspect}，像素 ${width}x${height}。`,
+    cinemaPosterCopy(opts.onScreenText),
     lock,
     CINEMA_STILL_LOCK,
     "这是口播短视频的画面：闭口、自然表情，不要对镜头张嘴主持。",
-    look ? `场景气质：${look}` : "",
+    `场景气质：${look}。必须是电影大片，不是手机自拍或证件照。`,
     `这一镜只改场景和光：${frame}`,
   ]
     .filter(Boolean)
@@ -93,26 +105,87 @@ export function cloneImagePrompt(opts: {
 export async function generateCloneStill(opts: {
   scene: string;
   imagePrompt?: string;
+  onScreenText?: string;
   look?: string;
   aspect: Aspect;
   photoPaths: string[];
   destPath: string;
   peopleCount?: number;
+  quality?: OutputQuality;
 }): Promise<void> {
+  const quality = parseQuality(opts.quality);
   const photos =
     opts.photoPaths.length === 1 ? [opts.photoPaths[0]!, opts.photoPaths[0]!] : opts.photoPaths;
   await generateStillFromRef({
     prompt: cloneImagePrompt({
       scene: opts.scene,
       aspect: opts.aspect,
-      look: opts.look,
+      look: opts.look || DEFAULT_CINEMA_LOOK,
       imagePrompt: opts.imagePrompt,
+      onScreenText: opts.onScreenText,
       peopleCount: Math.max(1, opts.peopleCount || 1),
+      quality,
     }),
     photoPaths: photos,
     destPath: opts.destPath,
     aspect: opts.aspect,
     lead: CINEMA_IDENTITY_LEAD,
-    extraBody: { size: "2K" },
+    extraBody: { size: quality },
   });
+}
+
+async function writeImageRef(dataUrl: string, destPath: string): Promise<void> {
+  await mkdir(path.dirname(destPath), { recursive: true });
+  if (dataUrl.startsWith("http")) {
+    const img = await fetch(dataUrl, { signal: AbortSignal.timeout(60_000) });
+    if (!img.ok) throw new Error("封面下载失败");
+    await writeFile(destPath, Buffer.from(await img.arrayBuffer()));
+    return;
+  }
+  const m = dataUrl.match(/^data:image\/[a-zA-Z0-9+.-]+;base64,(.+)$/);
+  if (!m) throw new Error("封面没返回图片");
+  await writeFile(destPath, Buffer.from(m[1], "base64"));
+}
+
+/** 成片封面走 Flow chat 出图，不走方舟静帧口。 */
+export async function generateFlowImage(opts: {
+  prompt: string;
+  destPath: string;
+  imageDataUrls?: string[];
+  lead?: string;
+  aspect?: Aspect;
+  quality?: OutputQuality;
+}): Promise<void> {
+  const apiKey = getFlowApiKey();
+  if (!apiKey) throw new Error("还没接上出图通道");
+  const content = buildImageGenContent({
+    prompt: opts.prompt,
+    imageDataUrls: opts.imageDataUrls || [],
+    lead: opts.lead,
+  });
+  const res = await fetch(`${getFlowBaseUrl()}/api/v1/chat/completions`, {
+    method: "POST",
+    headers: authHeaders(apiKey),
+    body: JSON.stringify({
+      model: getImageModel(),
+      messages: [{ role: "user", content }],
+      generation_config: opts.aspect
+        ? { image_config: { aspect_ratio: opts.aspect, image_size: parseQuality(opts.quality) } }
+        : undefined,
+      extra_body: opts.aspect
+        ? { image_config: { aspect_ratio: opts.aspect, image_size: parseQuality(opts.quality) } }
+        : undefined,
+    }),
+    signal: AbortSignal.timeout(180_000),
+  });
+  const data = await readFlowJson<{
+    choices?: { message?: { content?: unknown } }[];
+    data?: { url?: string; b64_json?: string; mime_type?: string }[];
+    error?: string | { message?: string };
+    message?: string;
+  }>(res);
+  if (!res.ok) throw new Error(mapFlowHttpError(res.status, data, "封面"));
+  const image = extractChatImage(data);
+  if (!image) throw new Error("封面没返回图片");
+  await writeImageRef(image, opts.destPath);
 }

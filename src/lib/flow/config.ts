@@ -10,6 +10,11 @@ export function getTextModel(): string {
   return (process.env.TEXT_MODEL || "deepseek-v4-pro").trim();
 }
 
+/** 口播页左侧助手：默认 deepseek-chat，C 端不写模型名 */
+export function getTalkChatModel(): string {
+  return (process.env.TALK_CHAT_MODEL || "deepseek-chat").trim();
+}
+
 /** 文案 + 图片分镜：默认 Astra */
 export function getScriptModel(): string {
   return (process.env.SCRIPT_MODEL || "gpt-6-astra").trim();

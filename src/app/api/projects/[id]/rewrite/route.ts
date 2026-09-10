@@ -20,7 +20,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     const saved = await updateProject(id, {
       status: "queued",
       phase: "board",
-      message: "在重写图片分镜…",
+      message: "在重写故事分镜…",
       error: null,
       draftText: "",
     });

@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { parseDurationSec, planBoard } from "./board";
 
 describe("planBoard", () => {
-  it("maps video length to shot count", () => {
-    expect(planBoard(15)).toEqual({ durationSec: 15, count: 5, each: 3 });
-    expect(planBoard(30).count).toBe(10);
-    expect(planBoard(8).count).toBe(3);
-    expect(planBoard(60).count).toBe(12);
+  it("treats duration as a budget, not a fixed shot grid", () => {
+    expect(planBoard(15)).toEqual({ durationSec: 15, minCount: 2, maxCount: 6 });
+    expect(planBoard(30).maxCount).toBeGreaterThanOrEqual(8);
+    expect(planBoard(8).minCount).toBe(2);
+    expect(planBoard(60).maxCount).toBe(12);
   });
 
   it("clamps duration", () => {

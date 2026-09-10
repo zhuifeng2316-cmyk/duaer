@@ -20,6 +20,14 @@ describe("ark clone stills", () => {
     expect(arkStillSize("9:16", { size: "2K" })).toBe("1440x2560");
     expect(arkStillSize("16:9")).toBe("2560x1440");
     expect(arkStillSize("1:1")).toBe("2048x2048");
+    expect(arkStillSize("3:4")).toBe("1536x2048");
+    expect(arkStillSize("4:3")).toBe("2048x1536");
+  });
+
+  it("locks 4K pixels to the chosen aspect", () => {
+    expect(arkStillSize("9:16", { size: "4K" })).toBe("2160x3840");
+    expect(arkStillSize("16:9", { size: "4K" })).toBe("3840x2160");
+    expect(arkStillSize("1:1", { size: "4K" })).toBe("4096x4096");
   });
 
   it("sends reference photos and identity text, no watermark", () => {

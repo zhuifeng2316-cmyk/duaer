@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isProduceBusy, startAfterBoard, startAfterCopy, startAfterStills } from "@/lib/pipeline";
 import { readProject, updateProject } from "@/lib/store";
+import { talkPicturesReady } from "@/lib/graphic-board";
 import { publicProject } from "@/lib/types";
 
 export async function POST(_req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -14,7 +15,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     return NextResponse.json({ error: "正在写，稍后再确认" }, { status: 400 });
   }
   if (project.phase === "images") {
-    if (project.stills.length < project.script.shots.length) {
+    if (!talkPicturesReady(project)) {
       return NextResponse.json({ error: "先把分镜画面出齐再确认" }, { status: 400 });
     }
     const saved = await updateProject(id, {
@@ -30,12 +31,12 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   }
   if (project.phase === "board") {
     if (!project.script.shots.some((shot) => shot.imagePrompt || shot.scene)) {
-      return NextResponse.json({ error: "先把图片分镜写好再出图" }, { status: 400 });
+      return NextResponse.json({ error: "先把故事分镜写好再出图" }, { status: 400 });
     }
     const saved = await updateProject(id, {
       status: "queued",
       phase: "images",
-      message: "分镜已确认，开始出图",
+      message: "故事分镜已确认，开始出图",
       error: null,
       draftText: "",
     });
@@ -45,7 +46,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   const saved = await updateProject(id, {
     status: "queued",
     phase: "board",
-    message: "文案已确认，开始写图片分镜",
+    message: "文案已确认，开始写故事分镜",
     error: null,
     draftText: "",
   });

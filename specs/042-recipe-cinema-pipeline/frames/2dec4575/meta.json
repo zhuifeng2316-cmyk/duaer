@@ -1,0 +1,46 @@
+{
+  "id": "2dec4575-e23f-4fb5-a396-7875980496f8",
+  "idea": "讲一个产品新功能：列表往下拉就能刷新，三张界面轮播给你看，上线提醒从右上角弹出来。",
+  "mode": "product",
+  "captionStyle": "",
+  "shots": [
+    {
+      "intent": "产品展示",
+      "lettering": "graphic",
+      "graphic": "app-showcase",
+      "onScreen": "新功能来了"
+    },
+    {
+      "intent": "下拉刷新",
+      "lettering": "graphic",
+      "graphic": "pull-to-refresh",
+      "onScreen": "列表下拉就能刷新"
+    },
+    {
+      "intent": "轮播",
+      "lettering": "graphic",
+      "graphic": "carousel-circle-1",
+      "onScreen": "三张界面轮播看"
+    },
+    {
+      "intent": "通知弹出",
+      "lettering": "graphic",
+      "graphic": "native-notification-pop",
+      "onScreen": "上线提醒右上角弹出"
+    },
+    {
+      "intent": "手势点按",
+      "lettering": "overlay-wipe",
+      "graphic": "",
+      "onScreen": "下拉试试新功能"
+    }
+  ],
+  "frames": "/Users/morgan/project/AIvideo/specs/042-recipe-cinema-pipeline/frames/2dec4575",
+  "sampleTimes": [
+    1.17,
+    3.67,
+    6.16,
+    8.76,
+    11.37
+  ]
+}

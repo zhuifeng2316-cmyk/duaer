@@ -33,6 +33,9 @@ describe("voices API", () => {
     const data = await list.json();
     expect(data.voices.some((v: { id: string }) => v.id === created.voice.id)).toBe(true);
     expect(data.lastVoiceId).toBe(created.voice.id);
+    expect(Array.isArray(data.house)).toBe(true);
+    expect(data.house.some((v: { name: string; sampleUrl: string }) => v.name === "冷叙" && v.sampleUrl.includes("house-"))).toBe(true);
+    expect(JSON.stringify(data.house)).not.toMatch(/uranus|bigtts/i);
     await deleteVoice(created.voice.id);
   });
 });

@@ -1,5 +1,8 @@
 import { readFile } from "fs/promises";
+import path from "path";
 import { NextResponse } from "next/server";
+import { ensureHousePreview } from "@/lib/house-preview";
+import { isHouseVoiceId } from "@/lib/house-voices";
 import { readVoice, safeVoiceMediaPath } from "@/lib/voice-store";
 
 const MIME: Record<string, string> = {
@@ -9,10 +12,28 @@ const MIME: Record<string, string> = {
   ".webm": "audio/webm",
   ".aac": "audio/aac",
   ".ogg": "audio/ogg",
+  ".aiff": "audio/aiff",
 };
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
+  if (isHouseVoiceId(id)) {
+    try {
+      const abs = await ensureHousePreview(id);
+      const buf = await readFile(abs);
+      const ext = path.extname(abs).toLowerCase();
+      return new NextResponse(buf, {
+        headers: {
+          "Content-Type": MIME[ext] || "audio/wav",
+          "Content-Length": String(buf.byteLength),
+          "Accept-Ranges": "bytes",
+          "Cache-Control": "private, max-age=86400",
+        },
+      });
+    } catch {
+      return NextResponse.json({ error: "这条暂时听不了" }, { status: 503 });
+    }
+  }
   const voice = await readVoice(id);
   if (!voice) return NextResponse.json({ error: "音色不存在" }, { status: 404 });
   const abs = safeVoiceMediaPath(id, voice.sample);

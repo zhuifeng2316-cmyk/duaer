@@ -19,6 +19,8 @@
 .links {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .link,
@@ -29,6 +31,7 @@
   border-radius: 999px;
   border: 1px solid transparent;
   color: #9a8d80;
+  white-space: nowrap;
 }
 
 .on {

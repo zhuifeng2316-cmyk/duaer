@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { publicTalkCard, type Project } from "./types";
+import { publicProject, publicTalkCard, talkWallCards, type Project } from "./types";
 
 const sample: Project = {
   id: "talk-1",
@@ -25,8 +25,13 @@ const sample: Project = {
   error: null,
   musicError: null,
   speechError: null,
+  composeError: null,
   finalPath: null,
-};
+  coverPath: null,
+    coverRev: 0,
+    coverTemplate: "titlecard-lockup",
+    captionStyle: "",
+  };
 
 describe("publicTalkCard", () => {
   it("exposes progress for the talks list", () => {
@@ -37,5 +42,24 @@ describe("publicTalkCard", () => {
     expect(card.message).toBe("正在写口播文案…");
     expect(card.thumbUrl).toContain("stills%2Fshot-1.png");
     expect(card.thumbUrl).toContain("v=3");
+  });
+
+  it("defaults missing quality to 2K", () => {
+    expect(publicProject(sample).quality).toBe("2K");
+    expect(publicProject({ ...sample, quality: "4K" }).quality).toBe("4K");
+  });
+
+  it("prefers the cover as the list thumb", () => {
+    const card = publicTalkCard({ ...sample, coverPath: "cover.png", coverRev: 2 });
+    expect(card.coverUrl).toContain("cover.png");
+    expect(card.thumbUrl).toContain("cover.png");
+    expect(card.thumbUrl).toContain("v=2");
+    expect(card.thumbUrl).not.toContain("shot-1");
+  });
+
+  it("only puts ready talks with a picture on the wall", () => {
+    const ready = { ...sample, status: "ready" as const, finalPath: "final.mp4", coverPath: "cover.png" };
+    expect(talkWallCards([sample, ready]).map((c) => c.id)).toEqual(["talk-1"]);
+    expect(talkWallCards([{ ...sample, status: "ready", finalPath: null, coverPath: null, stills: [] }])).toEqual([]);
   });
 });

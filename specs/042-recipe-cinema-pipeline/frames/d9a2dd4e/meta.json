@@ -1,0 +1,39 @@
+{
+  "id": "d9a2dd4e-a382-424b-8185-10f8576f5aa6",
+  "idea": "如果由我",
+  "mode": "story",
+  "captionStyle": "caption-editorial-emphasis",
+  "shots": [
+    {
+      "intent": "砸字",
+      "lettering": "overlay-slam",
+      "graphic": "",
+      "onScreen": "如果由我，未必更好"
+    },
+    {
+      "intent": "故障字",
+      "lettering": "overlay-slam",
+      "graphic": "",
+      "onScreen": "看见结果，未必看见代价"
+    },
+    {
+      "intent": "划重点",
+      "lettering": "overlay-highlight",
+      "graphic": "",
+      "onScreen": "三笔账：时间、钱、风险"
+    },
+    {
+      "intent": "胶片颗粒",
+      "lettering": "overlay-wipe",
+      "graphic": "",
+      "onScreen": "先列代价，再下结论"
+    }
+  ],
+  "frames": "/Users/morgan/project/AIvideo/specs/042-recipe-cinema-pipeline/frames/d9a2dd4e",
+  "sampleTimes": [
+    1.1,
+    4.06,
+    7.55,
+    11.28
+  ]
+}

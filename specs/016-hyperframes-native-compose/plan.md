@@ -22,7 +22,7 @@
 
 - 根节点：`data-composition-id="cinema"` + 画幅时长；一份 `gsap.timeline({ paused: true })` 注册到 `window.__timelines["cinema"]`
 - 每镜：`<section class="clip">` 包一张 `<img>`；运动 tween 打在 img 上，不改 clip 显隐
-- 字幕：口播句（否则屏幕字）拆词，注入与 `caption-highlight` 相同的 `hl-group` / `hl-word` / `hl-word-bg` 时间轴
+- 字幕：每镜只选一种官方身份（砸字 / 杂志双字体 / 擦除揭示 / 字重切换），按景别、场景、运动选；屏幕字用海报贴边标题；同一镜不混用
 - 胶片：沿用 `data-color-grading`（grain / vignette 在 details）
 - 允许 CDN：jsDelivr GSAP 3.14.2、Google Fonts Montserrat（中文回退系统黑体）
 - 校验拒绝：无时间轴根属性、ken-push 关键帧、非白名单外链

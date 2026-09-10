@@ -12,7 +12,7 @@ import {
 export const CLONE_VOICE_MISS = "选中的克隆音色这次没接上，口播用了备用声音";
 
 export function getSpeechModel(): string {
-  return (process.env.SPEECH_MODEL || "ark-tts-default").trim();
+  return (process.env.SPEECH_MODEL || "cosyvoice-v3.5-plus").trim();
 }
 
 export function getSpeechVoice(): string {

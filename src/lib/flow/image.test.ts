@@ -40,6 +40,13 @@ describe("image gen payload", () => {
     expect(p).not.toMatch(/白人银发绿眼/);
   });
 
+  it("asks talk stills to paint a short poster title", () => {
+    const p = cloneImagePrompt({ scene: "窗边", aspect: "9:16", onScreenText: "还在自己拍口播？" });
+    expect(p).toMatch(/还在自己拍口播/);
+    expect(p).toMatch(/短标题/);
+    expect(p).not.toMatch(/画面上不要字/);
+  });
+
   it("does not treat extra reference photos as extra people", () => {
     const p = cloneImagePrompt({ scene: "咖啡馆", aspect: "9:16", peopleCount: 1 });
     expect(p).toMatch(/只能出现附图这一个人/);

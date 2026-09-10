@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { publicHouseVoices } from "@/lib/house-voices";
 import { assertVoice, extForVoiceMime, parseVoiceName } from "@/lib/voice";
 import { createVoice, listVoices, publicVoice, readVoiceMeta } from "@/lib/voice-store";
 
@@ -7,6 +8,7 @@ export async function GET() {
   const meta = await readVoiceMeta();
   return NextResponse.json({
     voices: voices.map(publicVoice),
+    house: publicHouseVoices(),
     lastVoiceId: meta.lastVoiceId,
   });
 }

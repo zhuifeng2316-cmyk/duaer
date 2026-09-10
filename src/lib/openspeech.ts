@@ -3,8 +3,12 @@ import { spawn } from "child_process";
 import { mkdir, readFile, stat, writeFile } from "fs/promises";
 import path from "path";
 import { clipVoiceRefWav } from "./voice-audio";
+import { synthesizeCachedCosyVoice } from "./cosyvoice";
+import { DEFAULT_HOUSE_VOICE_ID, getHouseVoice, isHouseVoiceId } from "./house-voices";
+import { talkSpeechStyle, type SpeechStyle } from "./speech-style";
 
 export const CLONE_VOICE_MISS = "选中的克隆音色这次没接上，口播用了备用声音";
+export const CLONE_VOICE_CLOSED = "克隆音色通道还没开通，口播用了备用声音";
 
 const OPEN_SPEECH_BASE_URL = "https://openspeech.bytedance.com";
 
@@ -25,6 +29,7 @@ export type SpokenAudio = {
   path: string;
   cloneUsed: boolean;
   warning: string | null;
+  tempo: number;
 };
 
 function openSpeechApiKey(): string {
@@ -34,6 +39,77 @@ function openSpeechApiKey(): string {
 function getOpenSpeechSpeakerId(): string {
   // 非克隆的系统预设音色 ID（应为 seed-tts-2.0 支持的 speaker）。
   return (process.env.SPEECH_SPEAKER_ID || process.env.SPEECH_VOICE || "zh_female_gaolengyujie_uranus_bigtts").trim();
+}
+
+export function customSpeakerId(voiceId: string): string {
+  const hex = voiceId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 16) || "voice";
+  const id = `duaer${hex}`;
+  return id.length >= 8 ? id : `${id}voice`;
+}
+
+export function voiceCloneUrls(): string[] {
+  return [`${OPEN_SPEECH_BASE_URL}/api/v3/tts/voice_clone`];
+}
+
+export function voiceStatusUrls(): string[] {
+  return [`${OPEN_SPEECH_BASE_URL}/api/v3/tts/get_voice`];
+}
+
+export function clonedSpeechResourceId(): string {
+  return SEED_ICL_2_0;
+}
+
+let iclGranted: boolean | null = null;
+
+export function resetCloneChannelCache(): void {
+  iclGranted = null;
+}
+
+function cloneDenied(text: string): boolean {
+  return /resource not granted|45000030|Invalid X-Api-Key/i.test(text);
+}
+
+async function isCloneChannelOpen(): Promise<boolean> {
+  if (iclGranted != null) return iclGranted;
+  const headers = openSpeechHeaders(SEED_ICL_2_0);
+  if (!headers) {
+    iclGranted = false;
+    return false;
+  }
+  try {
+    const res = await fetch(`${OPEN_SPEECH_BASE_URL}/api/v3/plan/tts/unidirectional`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        user: { uid: "duaer" },
+        req_params: {
+          text: "测",
+          speaker: "S_probe",
+          audio_params: { format: "mp3", sample_rate: 24000 },
+          additions: JSON.stringify({ model_type: 4 }),
+        },
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    const text = await res.text();
+    iclGranted = !cloneDenied(text);
+    return iclGranted;
+  } catch {
+    iclGranted = false;
+    return false;
+  }
+}
+
+function cloneAuthHeaders(resourceId?: string): Record<string, string> | null {
+  const apiKey = openSpeechApiKey();
+  if (!apiKey) return null;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "X-Api-Key": apiKey,
+    "X-Api-Request-Id": randomUUID(),
+  };
+  if (resourceId) headers["X-Api-Resource-Id"] = resourceId;
+  return headers;
 }
 
 function openSpeechHeaders(resourceId: string): Record<string, string> | null {
@@ -170,19 +246,25 @@ async function postOpenSpeechUnidirectional(params: {
   resourceId: string;
   additions?: string;
   destAiff: string;
+  speechRate?: number;
 }): Promise<boolean> {
   const headers = openSpeechHeaders(params.resourceId);
   if (!headers) return false;
+
+  const audioParams: Record<string, unknown> = { format: "mp3", sample_rate: 24000 };
+  if (typeof params.speechRate === "number" && Number.isFinite(params.speechRate)) {
+    audioParams.speech_rate = Math.max(-50, Math.min(100, Math.round(params.speechRate)));
+  }
 
   const body: Record<string, unknown> = {
     user: { uid: "duaer" },
     req_params: {
       text: params.text,
       speaker: params.speakerId,
-      audio_params: { format: "mp3", sample_rate: 24000 },
+      audio_params: audioParams,
     },
   };
-  if (params.additions) (body.req_params as any).additions = params.additions;
+  if (params.additions) (body.req_params as Record<string, unknown>).additions = params.additions;
 
   // 方舟/豆包语音新控制台 API Key 走 plan 接口；旧 uni 接口常报 Invalid X-Api-Key。
   const urls = [
@@ -210,12 +292,43 @@ async function postOpenSpeechUnidirectional(params: {
   return false;
 }
 
+function parseCloneSpeaker(json: { speaker_id?: string; status?: number }): string | null {
+  const speakerId = typeof json.speaker_id === "string" ? json.speaker_id.trim() : "";
+  if (!speakerId) return null;
+  const status = typeof json.status === "number" ? json.status : 0;
+  if (status === 2 || status === 4 || status === 0) return speakerId;
+  return speakerId;
+}
+
+async function pollCloneSpeaker(speakerId: string, headers: Record<string, string>): Promise<string | null> {
+  const started = Date.now();
+  while (Date.now() - started < 180_000) {
+    await new Promise((r) => setTimeout(r, 3000));
+    for (const url of voiceStatusUrls()) {
+      const pollRes = await fetch(url, {
+        method: "POST",
+        headers: { ...headers, "X-Api-Request-Id": randomUUID() },
+        body: JSON.stringify({ speaker_id: speakerId }),
+        signal: AbortSignal.timeout(60_000),
+      });
+      if (!pollRes.ok) continue;
+      const pollJson = (await pollRes.json().catch(() => ({}))) as { speaker_id?: string; status?: number };
+      if ((pollJson.status === 2 || pollJson.status === 4) && typeof pollJson.speaker_id === "string") {
+        return pollJson.speaker_id;
+      }
+    }
+  }
+  return null;
+}
+
 async function postOpenSpeechVoiceClone(params: {
   customSpeakerId: string;
   ref: SpeechRef;
 }): Promise<string | null> {
-  const headers = openSpeechHeaders(SEED_ICL_2_0);
-  if (!headers) return null;
+  const headerSets = [cloneAuthHeaders(), cloneAuthHeaders(SEED_ICL_2_0)].filter(
+    (h): h is Record<string, string> => Boolean(h),
+  );
+  if (!headerSets.length) return null;
 
   const body = {
     speaker_id: "custom_speaker_id",
@@ -225,47 +338,30 @@ async function postOpenSpeechVoiceClone(params: {
       format: params.ref.format,
     },
     language: 0,
-    extra_params: {
-      enable_audio_denoise: false,
-    },
+    extra_params: JSON.stringify({ enable_audio_denoise: false }),
   };
 
-  const res = await fetch(`${OPEN_SPEECH_BASE_URL}/api/v3/tts/voice_clone`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(60_000),
-  });
-  if (!res.ok) return null;
-
-  try {
-    const json = (await res.json()) as { speaker_id?: string; status?: number };
-    const speakerId = typeof json.speaker_id === "string" ? json.speaker_id : "";
-    const status = typeof json.status === "number" ? json.status : 0;
-    if (!speakerId) return null;
-    if (status === 2 || status === 4) return speakerId;
-
-    // 训练中：轮询 get_voice
-    const started = Date.now();
-    while (Date.now() - started < 180_000) {
-      await new Promise((r) => setTimeout(r, 3000));
-      const pollRes = await fetch(`${OPEN_SPEECH_BASE_URL}/api/v3/tts/get_voice`, {
+  for (const headers of headerSets) {
+    for (const url of voiceCloneUrls()) {
+      const res = await fetch(url, {
         method: "POST",
-        headers,
-        body: JSON.stringify({ speaker_id: speakerId }),
+        headers: { ...headers, "X-Api-Request-Id": randomUUID() },
+        body: JSON.stringify(body),
         signal: AbortSignal.timeout(60_000),
       });
-      if (!pollRes.ok) continue;
-      const pollJson = (await pollRes.json()) as { speaker_id?: string; status?: number };
-      if ((pollJson.status === 2 || pollJson.status === 4) && typeof pollJson.speaker_id === "string") {
-        return pollJson.speaker_id;
+      if (!res.ok) continue;
+      try {
+        const json = (await res.json()) as { speaker_id?: string; status?: number };
+        const speakerId = parseCloneSpeaker(json);
+        if (!speakerId) continue;
+        if (json.status === 2 || json.status === 4) return speakerId;
+        return (await pollCloneSpeaker(speakerId, headers)) || speakerId;
+      } catch {
+        // try next auth / URL
       }
     }
-
-    return null;
-  } catch {
-    return null;
   }
+  return null;
 }
 
 async function tryClonedSpeech(
@@ -273,53 +369,70 @@ async function tryClonedSpeech(
   destAiff: string,
   samplePath: string,
   voiceId: string | null,
+  instruction?: string,
 ): Promise<boolean> {
   if (!voiceId) return false;
+  if (!(await isCloneChannelOpen())) return false;
 
   const ref = await readSpeechRef(samplePath, path.dirname(destAiff));
   if (!ref) return false;
 
   const cachedSpeakerId = await readCachedSpeakerId(voiceId);
-  const additions = JSON.stringify({ model_type: 4 });
+  const additions = JSON.stringify({
+    model_type: 4,
+    ...(instruction?.trim() ? { context_texts: [instruction.trim()] } : {}),
+  });
 
   const speakerId =
     cachedSpeakerId ||
     (await postOpenSpeechVoiceClone({
-      customSpeakerId: `custom_${voiceId}`.replace(/[^a-zA-Z0-9_-]/g, "_"),
+      customSpeakerId: customSpeakerId(voiceId),
       ref,
     }));
 
   if (!speakerId) return false;
   if (!cachedSpeakerId) await writeCachedSpeakerId(voiceId, speakerId);
 
-  // 克隆合成：优先 SPEECH_MODEL（默认 seed-tts-2.0 / doubao-seed-tts-2.0）；失败再回落 seed-icl-2.0。
-  const primary = getSpeechResourceId();
-  return (
-    (await postOpenSpeechUnidirectional({
-      text,
-      speakerId,
-      resourceId: primary,
-      additions,
-      destAiff,
-    })) ||
-    (await postOpenSpeechUnidirectional({
-      text,
-      speakerId,
-      resourceId: SEED_ICL_2_0,
-      additions,
-      destAiff,
-    }))
-  );
+  // 克隆音色必须走 ICL 资源；成片 seed-tts-2.0 对不上克隆 speaker。
+  return postOpenSpeechUnidirectional({
+    text,
+    speakerId,
+    resourceId: clonedSpeechResourceId(),
+    additions,
+    destAiff,
+  });
 }
 
-async function tryPlainSpeech(text: string, destAiff: string): Promise<boolean> {
+async function tryHouseSpeech(
+  text: string,
+  destAiff: string,
+  voiceId: string | null,
+  style: SpeechStyle,
+): Promise<boolean> {
+  const house = getHouseVoice(voiceId) || getHouseVoice(DEFAULT_HOUSE_VOICE_ID);
+  if (!house) return false;
+  const instruction = style.instruction.trim() || house.vibe;
+  return postOpenSpeechUnidirectional({
+    text,
+    speakerId: house.speaker,
+    resourceId: getSpeechResourceId(),
+    destAiff,
+    speechRate: style.speechRate,
+    additions: JSON.stringify({ context_texts: [instruction] }),
+  });
+}
+
+async function tryPlainSpeech(text: string, destAiff: string, style?: SpeechStyle): Promise<boolean> {
   const speakerId = getOpenSpeechSpeakerId();
   if (!speakerId) return false;
+  const instruction = (style?.instruction || "").trim();
   return postOpenSpeechUnidirectional({
     text,
     speakerId,
     resourceId: getSpeechResourceId(),
     destAiff,
+    speechRate: style?.speechRate,
+    additions: instruction ? JSON.stringify({ context_texts: [instruction] }) : undefined,
   });
 }
 
@@ -348,29 +461,44 @@ export async function generateSpokenAudio(
   destAiff: string,
   samplePath?: string | null,
   voiceId?: string | null,
+  instruction?: string | null,
+  style?: Partial<SpeechStyle>,
 ): Promise<SpokenAudio> {
   const spoken = text.replace(/\s+/g, " ").trim();
   if (!spoken) throw new Error("没有可念的口播");
 
   await mkdir(path.dirname(destAiff), { recursive: true });
 
-  const sample = samplePath || undefined;
+  const resolved = talkSpeechStyle({
+    index: 0,
+    total: 1,
+    line: spoken,
+    voiceId: voiceId || DEFAULT_HOUSE_VOICE_ID,
+  });
+  const merged: SpeechStyle = {
+    instruction: (instruction || "").trim() || resolved.instruction,
+    speechRate: typeof style?.speechRate === "number" ? style.speechRate : resolved.speechRate,
+    ffmpegTempo: typeof style?.ffmpegTempo === "number" ? style.ffmpegTempo : resolved.ffmpegTempo,
+  };
 
-  if (sample) {
-    if (await tryClonedSpeech(spoken, destAiff, sample, voiceId ?? null)) {
-      return { path: mp3OutPathFromAiff(destAiff), cloneUsed: true, warning: null };
+  if (isHouseVoiceId(voiceId) || !voiceId) {
+    const houseId = isHouseVoiceId(voiceId) ? voiceId : DEFAULT_HOUSE_VOICE_ID;
+    if (await tryHouseSpeech(spoken, destAiff, houseId, merged)) {
+      return { path: mp3OutPathFromAiff(destAiff), cloneUsed: false, warning: null, tempo: 1 };
     }
-    if (await tryPlainSpeech(spoken, destAiff)) {
-      return { path: mp3OutPathFromAiff(destAiff), cloneUsed: false, warning: CLONE_VOICE_MISS };
+    if (await tryPlainSpeech(spoken, destAiff, merged)) {
+      return { path: mp3OutPathFromAiff(destAiff), cloneUsed: false, warning: null, tempo: 1 };
     }
     await macSay(spoken, destAiff);
-    return { path: destAiff, cloneUsed: false, warning: CLONE_VOICE_MISS };
+    return { path: destAiff, cloneUsed: false, warning: null, tempo: 1 };
   }
 
-  if (await tryPlainSpeech(spoken, destAiff)) {
-    return { path: mp3OutPathFromAiff(destAiff), cloneUsed: false, warning: null };
-  }
-  await macSay(spoken, destAiff);
-  return { path: destAiff, cloneUsed: false, warning: null };
+  const spokenPath = await synthesizeCachedCosyVoice({
+    localVoiceId: voiceId,
+    text: spoken,
+    destPath: destAiff,
+    instruction: merged.instruction.slice(0, 50),
+  });
+  return { path: spokenPath, cloneUsed: true, warning: null, tempo: merged.ffmpegTempo };
 }
 

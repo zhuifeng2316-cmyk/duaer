@@ -14,8 +14,8 @@ const siteUrl = getSiteUrl();
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "Duaer · 人不出镜的 AI 口播",
-  description: "专门做口播。人不用出镜。照片克隆画面，声音克隆口播，文案、分镜、配乐都来自 AI。",
+  title: "Duaer · 做视频",
+  description: "把要讲的话做成视频。先写文案，确认后再出画面。",
   alternates: { canonical: "/" },
 };
 

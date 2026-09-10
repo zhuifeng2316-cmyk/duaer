@@ -112,9 +112,23 @@ export function extractImageDataUrl(content: unknown): string | null {
     return null;
   }
   if (typeof content === "object") {
-    const o = content as { image_url?: { url?: string } | string; url?: string };
+    const o = content as { image_url?: { url?: string } | string; url?: string; b64_json?: string; mime_type?: string };
     const url = typeof o.image_url === "string" ? o.image_url : o.image_url?.url || o.url;
     if (url?.startsWith("data:image") || url?.startsWith("http")) return url;
+    if (o.b64_json) return `data:${o.mime_type || "image/png"};base64,${o.b64_json}`;
   }
+  return null;
+}
+
+export function extractChatImage(data: {
+  choices?: { message?: { content?: unknown } }[];
+  data?: { url?: string; b64_json?: string; mime_type?: string }[];
+}): string | null {
+  const fromContent = extractImageDataUrl(data.choices?.[0]?.message?.content);
+  if (fromContent) return fromContent;
+  const first = data.data?.[0];
+  if (!first) return null;
+  if (first.url?.startsWith("http") || first.url?.startsWith("data:image")) return first.url;
+  if (first.b64_json) return `data:${first.mime_type || "image/png"};base64,${first.b64_json}`;
   return null;
 }

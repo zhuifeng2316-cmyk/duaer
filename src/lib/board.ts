@@ -6,10 +6,10 @@ export function parseDurationSec(raw: string | null | undefined): number {
   return Math.min(60, Math.max(8, Math.round(n)));
 }
 
-/** 按成片时长排图片分镜：大约 3 秒一镜，3–12 镜。 */
-export function planBoard(targetSec: number): { durationSec: number; count: number; each: number } {
+/** 目标时长只是预算：镜数按文案来，这里只给上下限。 */
+export function planBoard(targetSec: number): { durationSec: number; minCount: number; maxCount: number } {
   const durationSec = parseDurationSec(String(targetSec));
-  const count = Math.min(12, Math.max(3, Math.round(durationSec / 3)));
-  const each = Math.round((durationSec / count) * 10) / 10;
-  return { durationSec, count, each };
+  const minCount = 2;
+  const maxCount = Math.min(12, Math.max(4, Math.round(durationSec / 2.5)));
+  return { durationSec, minCount, maxCount };
 }

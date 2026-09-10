@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ASPECTS, type Aspect } from "@/lib/aspect";
+import { ASPECTS, QUALITIES, type Aspect, type OutputQuality } from "@/lib/aspect";
+import { pickStudioVoiceId } from "@/lib/house-voices";
 import { DURATION_PRESETS } from "@/lib/board";
 import {
   extForVoiceMime,
@@ -11,6 +13,7 @@ import {
   pickRecorderMime,
   recorderStillFlushing,
 } from "@/lib/voice";
+import { HomeWall } from "./home-wall";
 import styles from "./page.module.css";
 
 type PublicVoice = {
@@ -18,6 +21,13 @@ type PublicVoice = {
   name: string;
   createdAt: string;
   sampleUrl: string;
+};
+
+type PublicHouseVoice = {
+  id: string;
+  name: string;
+  blurb: string;
+  sampleUrl?: string;
 };
 
 type PublicCharacter = {
@@ -64,10 +74,17 @@ type PublicTurn = {
   regenViewId?: string | null;
 };
 
+type PublicBilling = {
+  planName: string;
+  remaining: number;
+  allows4K: boolean;
+};
+
 export default function HomePage() {
   const router = useRouter();
   const [files, setFiles] = useState<File[]>([]);
   const [voices, setVoices] = useState<PublicVoice[]>([]);
+  const [houseVoices, setHouseVoices] = useState<PublicHouseVoice[]>([]);
   const [characters, setCharacters] = useState<PublicCharacter[]>([]);
   const [selectedVoiceId, setSelectedVoiceId] = useState("");
   const [selectedCharacterIds, setSelectedCharacterIds] = useState<string[]>([]);
@@ -85,11 +102,14 @@ export default function HomePage() {
   const [voiceSavedHint, setVoiceSavedHint] = useState("");
   const [savingVoice, setSavingVoice] = useState(false);
   const [aspect, setAspect] = useState<Aspect>("9:16");
+  const [quality, setQuality] = useState<OutputQuality>("2K");
   const [durationSec, setDurationSec] = useState(15);
+  const [talkKind, setTalkKind] = useState<"knowledge" | "story">("knowledge");
   const [idea, setIdea] = useState("");
   const [look, setLook] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [billing, setBilling] = useState<PublicBilling | null>(null);
   const [turn, setTurn] = useState<PublicTurn | null>(null);
   const [splitting, setSplitting] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -102,8 +122,13 @@ export default function HomePage() {
   const recLiveRef = useRef(false);
   const recMimeRef = useRef("audio/webm");
   const recStopTimerRef = useRef(0);
+  const houseAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [playingHouseId, setPlayingHouseId] = useState("");
+  const [houseHearHint, setHouseHearHint] = useState("");
+  const [cloneOpen, setCloneOpen] = useState(false);
 
   const producing = busy;
+  const needDailyFor4K = quality === "4K" && billing != null && !billing.allows4K;
   const cutting =
     splitting || turn?.status === "cutting" || (turn?.status === "queued" && !turn.headUrl);
   const expanding = turn?.status === "running";
@@ -112,22 +137,50 @@ export default function HomePage() {
   const enhancing = enhancingHead || turn?.status === "enhancing";
 
   useEffect(() => {
+    let cancelled = false;
+    function applyBill(billData: { planName?: unknown; remaining?: unknown; allows4K?: unknown }) {
+      setBilling({
+        planName: String(billData.planName || "试做"),
+        remaining: Number(billData.remaining) || 0,
+        allows4K: Boolean(billData.allows4K),
+      });
+    }
+    async function loadBill() {
+      const res = await fetch("/api/billing", { cache: "no-store" });
+      const billData = await res.json();
+      if (cancelled || !res.ok || !billData) return;
+      applyBill(billData);
+    }
     void (async () => {
-      const [voiceRes, charRes] = await Promise.all([
+      const [voiceRes, charRes, billRes] = await Promise.all([
         fetch("/api/voices", { cache: "no-store" }),
         fetch("/api/characters", { cache: "no-store" }),
+        fetch("/api/billing", { cache: "no-store" }),
       ]);
       const voiceData = await voiceRes.json();
       const charData = await charRes.json();
+      const billData = await billRes.json();
+      if (cancelled) return;
       if (Array.isArray(voiceData.voices)) setVoices(voiceData.voices);
-      if (voiceData.lastVoiceId) setSelectedVoiceId(String(voiceData.lastVoiceId));
+      if (Array.isArray(voiceData.house)) setHouseVoices(voiceData.house);
+      const cloneIds = Array.isArray(voiceData.voices)
+        ? voiceData.voices.map((v: { id?: unknown }) => String(v.id || "")).filter(Boolean)
+        : [];
+      setSelectedVoiceId(pickStudioVoiceId(cloneIds, voiceData.lastVoiceId));
       if (Array.isArray(charData.characters)) setCharacters(charData.characters);
       if (Array.isArray(charData.lastCharacterIds) && charData.lastCharacterIds.length) {
-        const ids = charData.lastCharacterIds.map(String);
-        setSelectedCharacterIds(ids);
-        setInspectCharacterId(ids[0] || "");
+        setSelectedCharacterIds(charData.lastCharacterIds.map(String));
       }
+      if (billRes.ok && billData) applyBill(billData);
     })();
+    const onBill = () => void loadBill();
+    window.addEventListener("focus", onBill);
+    window.addEventListener("duaer-billing", onBill);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", onBill);
+      window.removeEventListener("duaer-billing", onBill);
+    };
   }, []);
 
   const previews = useMemo(() => files.map((f) => URL.createObjectURL(f)), [files]);
@@ -150,8 +203,38 @@ export default function HomePage() {
       window.clearTimeout(recStopTimerRef.current);
       recStreamRef.current?.getTracks().forEach((track) => track.stop());
       if (recorderRef.current && recorderRef.current.state !== "inactive") recorderRef.current.stop();
+      houseAudioRef.current?.pause();
     };
   }, []);
+
+  function stopHousePreview() {
+    houseAudioRef.current?.pause();
+    houseAudioRef.current = null;
+    setPlayingHouseId("");
+  }
+
+  async function toggleHousePreview(voice: { id: string; sampleUrl?: string }) {
+    if (playingHouseId === voice.id) {
+      stopHousePreview();
+      return;
+    }
+    const src = voice.sampleUrl;
+    if (!src) return;
+    stopHousePreview();
+    setHouseHearHint("");
+    const audio = new Audio(src);
+    houseAudioRef.current = audio;
+    setPlayingHouseId(voice.id);
+    audio.onended = () => {
+      if (houseAudioRef.current === audio) stopHousePreview();
+    };
+    try {
+      await audio.play();
+    } catch {
+      stopHousePreview();
+      setHouseHearHint("这条暂时听不了");
+    }
+  }
 
   useEffect(() => {
     if (!turn?.id) return;
@@ -198,6 +281,10 @@ export default function HomePage() {
       setError("先上传至少一张人物照片，或选用已保存的人物");
       return;
     }
+    if (needDailyFor4K) {
+      setError("4K 要日更套餐");
+      return;
+    }
     submitting.current = true;
     setBusy(true);
     try {
@@ -205,13 +292,24 @@ export default function HomePage() {
       form.set("idea", idea);
       form.set("look", look);
       form.set("aspect", aspect);
+      form.set("quality", quality);
       form.set("durationSec", String(durationSec));
+      form.set("topic", talkKind);
       for (const f of files) form.append("photos", f);
       for (const id of selectedCharacterIds) form.append("characterIds", id);
       if (selectedVoiceId) form.set("voiceId", selectedVoiceId);
       const res = await fetch("/api/projects", { method: "POST", body: form });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "提交失败");
+      if (!res.ok) {
+        if (data.billing) {
+          setBilling({
+            planName: String(data.billing.planName || "试做"),
+            remaining: Number(data.billing.remaining) || 0,
+            allows4K: Boolean(data.billing.allows4K),
+          });
+        }
+        throw new Error(data.error || "提交失败");
+      }
       const id = data.project?.id;
       if (!id) throw new Error("提交失败");
       router.push(`/talks/${id}`);
@@ -552,7 +650,6 @@ export default function HomePage() {
   }
 
   function toggleCharacter(id: string) {
-    setInspectCharacterId(id);
     setSelectedCharacterIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
@@ -587,6 +684,7 @@ export default function HomePage() {
   }
 
   const selectedVoice = voices.find((v) => v.id === selectedVoiceId);
+  const selectedHouse = houseVoices.find((v) => v.id === selectedVoiceId);
   const charExpanding = characterDetail?.status === "expanding";
   const charRerunning = characterDetail?.status === "rerunning";
   const turnBusy = cutting || expanding || reviewing || enhancing || rerunning;
@@ -607,12 +705,17 @@ export default function HomePage() {
         <div className={styles.rail}>
           <section className={styles.hero}>
             <h1 className={styles.heroTitle}>
-              你也可以
+              把要讲的话
               <br />
-              拍摄大片
+              做成视频
             </h1>
             <p className={styles.lede}>
-              专门做口播。先写要讲什么，再写口播文案，确认后再写图片分镜文字，确认这些场景描述后才出图，然后生成口播和配乐，写合成稿再成片。照片克隆画面，人物和音色都能复用，你不用出镜拍摄。
+              先写要讲的话。确认了，再出画面。
+            </p>
+            <p className={styles.priceHint}>
+              {billing
+                ? `${billing.planName} · 本月还剩 ${billing.remaining} 条 · 先写文案扣一条`
+                : "试做免费 2 条 · 开讲 128 元/月 20 条 · 日更 268 元/月"}
             </p>
           </section>
         <form className={styles.desk} onSubmit={onSubmit}>
@@ -643,12 +746,16 @@ export default function HomePage() {
           >
             {cutting ? "正在抠头像…" : "先抠出头像"}
           </button>
-          <div className={styles.voiceBox}>
-            <p className={styles.voiceLabel}>
-              人物形象
-              <small>八个方位收在这个人下面，点开可重做</small>
-            </p>
-            {characters.length > 0 && (
+          {characters.length > 0 && (
+            <div className={styles.tightBox}>
+              <p className={styles.voiceLabel}>
+                人物
+                {selectedCharacterIds[0] ? (
+                  <button type="button" className={styles.hear} onClick={() => setInspectCharacterId(selectedCharacterIds[0]!)}>
+                    看形象
+                  </button>
+                ) : null}
+              </p>
               <div className={styles.aspects} role="group" aria-label="人物形象">
                 {characters.map((c) => (
                   <button
@@ -669,148 +776,245 @@ export default function HomePage() {
                   </button>
                 ))}
               </div>
-            )}
-          </div>
-          <div className={styles.voiceBox}>
+            </div>
+          )}
+          <div className={styles.tightBox}>
             <p className={styles.voiceLabel}>
-              克隆音色
-              <small>在线录音克隆，建好后每条口播都能用</small>
+              口播声音
+              <small>点选，再点听</small>
             </p>
             {voices.length > 0 && (
-              <div className={styles.aspects} role="group" aria-label="克隆音色">
+              <div className={styles.voiceChips} role="group" aria-label="克隆音色">
                 {voices.map((v) => (
-                  <button
-                    key={v.id}
-                    type="button"
-                    className={selectedVoiceId === v.id ? `${styles.ratio} ${styles.on}` : styles.ratio}
-                    onClick={() => setSelectedVoiceId(v.id)}
-                  >
-                    {v.name}
-                  </button>
+                  <span key={v.id} className={styles.voiceChip}>
+                    <button
+                      type="button"
+                      className={selectedVoiceId === v.id ? `${styles.ratio} ${styles.on}` : styles.ratio}
+                      onClick={() => setSelectedVoiceId(v.id)}
+                    >
+                      {v.name}
+                    </button>
+                    <button
+                      type="button"
+                      className={playingHouseId === v.id ? `${styles.hear} ${styles.on}` : styles.hear}
+                      aria-label={`试听${v.name}`}
+                      onClick={() => void toggleHousePreview(v)}
+                    >
+                      {playingHouseId === v.id ? "停" : "听"}
+                    </button>
+                  </span>
                 ))}
               </div>
             )}
-            {selectedVoice && (
-              <>
-                <audio
-                  className={styles.voicePreview}
-                  src={selectedVoice.sampleUrl}
-                  controls
-                  preload="metadata"
-                />
-                <p className={styles.hint}>
-                  {voiceSavedHint || `可试听「${selectedVoice.name}」。出片时用这条声音念口播`}
-                </p>
-              </>
+            {houseVoices.length > 0 && (
+              <div className={styles.voiceChips} role="group" aria-label="自带音色">
+                {houseVoices.map((v) => (
+                  <span key={v.id} className={styles.voiceChip}>
+                    <button
+                      type="button"
+                      className={selectedVoiceId === v.id ? `${styles.ratio} ${styles.on}` : styles.ratio}
+                      onClick={() => setSelectedVoiceId(v.id)}
+                    >
+                      {v.name}
+                    </button>
+                    <button
+                      type="button"
+                      className={playingHouseId === v.id ? `${styles.hear} ${styles.on}` : styles.hear}
+                      aria-label={`试听${v.name}`}
+                      onClick={() => void toggleHousePreview(v)}
+                    >
+                      {playingHouseId === v.id ? "停" : "听"}
+                    </button>
+                  </span>
+                ))}
+              </div>
             )}
-            <input
-              className={styles.idea}
-              value={voiceName}
-              onChange={(e) => setVoiceName(e.target.value)}
-              placeholder="新音色名，比如「我」"
-              maxLength={16}
-            />
-            <div className={styles.recRow}>
-              {recState === "recording" ? (
-                <button
-                  className={styles.ratio}
-                  type="button"
-                  disabled={recStopping}
-                  onClick={() => stopVoiceRecord()}
-                >
-                  {recStopping ? "正在停下…" : "停录"}
-                </button>
-              ) : (
-                <button
-                  className={styles.ratio}
-                  type="button"
-                  disabled={producing}
-                  onClick={() => void startVoiceRecord()}
-                >
-                  {recState === "preview" ? "重录" : "开始录音"}
-                </button>
-              )}
-              <span className={styles.hint}>
-                {recState === "recording"
-                  ? recStopping
-                    ? "正在取出刚才录的声音"
-                    : `正在录 ${recSec} 秒 · 至少 ${MIN_VOICE_SEC} 秒`
-                  : recState === "preview"
-                    ? `已录 ${recSec} 秒，可试听再保存`
-                    : "对着麦克风说 10 秒以上，在线克隆音色"}
-              </span>
-            </div>
-            {recHint && <p className={styles.err}>{recHint}</p>}
-            {recPreviewUrl && recState === "preview" && (
-              <audio className={styles.voicePreview} src={recPreviewUrl} controls preload="metadata" />
-            )}
-            <button
-              className={styles.ratio}
-              type="button"
-              disabled={savingVoice || recState !== "preview" || !voiceBlob || Boolean(recHint)}
-              onClick={() => void saveVoice()}
+            {selectedHouse && <p className={styles.hint}>{selectedHouse.blurb}</p>}
+            {houseHearHint && <p className={styles.err}>{houseHearHint}</p>}
+            <details
+              className={styles.fold}
+              open={cloneOpen || recState !== "idle"}
+              onToggle={(e) => setCloneOpen((e.target as HTMLDetailsElement).open)}
             >
-              {savingVoice ? "保存中…" : "存成音色"}
-            </button>
+              <summary>录自己的声音</summary>
+              <input
+                className={styles.idea}
+                value={voiceName}
+                onChange={(e) => setVoiceName(e.target.value)}
+                placeholder="新音色名，比如「我」"
+                maxLength={16}
+              />
+              <div className={styles.recRow}>
+                {recState === "recording" ? (
+                  <button
+                    className={styles.ratio}
+                    type="button"
+                    disabled={recStopping}
+                    onClick={() => stopVoiceRecord()}
+                  >
+                    {recStopping ? "正在停下…" : "停录"}
+                  </button>
+                ) : (
+                  <button
+                    className={styles.ratio}
+                    type="button"
+                    disabled={producing}
+                    onClick={() => void startVoiceRecord()}
+                  >
+                    {recState === "preview" ? "重录" : "开始录音"}
+                  </button>
+                )}
+                <span className={styles.hint}>
+                  {recState === "recording"
+                    ? recStopping
+                      ? "正在取出刚才录的声音"
+                      : `正在录 ${recSec} 秒 · 至少 ${MIN_VOICE_SEC} 秒`
+                    : recState === "preview"
+                      ? `已录 ${recSec} 秒，可试听再保存`
+                      : "对着麦克风说 10 秒以上"}
+                </span>
+              </div>
+              {recHint && <p className={styles.err}>{recHint}</p>}
+              {recPreviewUrl && recState === "preview" && (
+                <audio className={styles.voicePreview} src={recPreviewUrl} controls preload="metadata" />
+              )}
+              <button
+                className={styles.ratio}
+                type="button"
+                disabled={savingVoice || recState !== "preview" || !voiceBlob || Boolean(recHint)}
+                onClick={() => void saveVoice()}
+              >
+                {savingVoice ? "保存中…" : "存成音色"}
+              </button>
+              {voiceSavedHint && <p className={styles.hint}>{voiceSavedHint}</p>}
+            </details>
           </div>
 
-          <div className={styles.aspects} role="group" aria-label="画幅">
-            {ASPECTS.map((a) => (
-              <button
-                key={a}
-                type="button"
-                className={aspect === a ? `${styles.ratio} ${styles.on}` : styles.ratio}
-                onClick={() => setAspect(a)}
-              >
-                {a}
-              </button>
-            ))}
-          </div>
-          <div className={styles.aspects} role="group" aria-label="成片时长">
-            {DURATION_PRESETS.map((d) => (
-              <button
-                key={d}
-                type="button"
-                className={durationSec === d ? `${styles.ratio} ${styles.on}` : styles.ratio}
-                onClick={() => setDurationSec(d)}
-              >
-                {d}秒
-              </button>
-            ))}
+          <div className={styles.compact}>
+            <div className={styles.aspects} role="group" aria-label="画幅">
+              {ASPECTS.map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  className={aspect === a ? `${styles.ratio} ${styles.on}` : styles.ratio}
+                  onClick={() => setAspect(a)}
+                >
+                  {a}
+                </button>
+              ))}
+            </div>
+            <div className={styles.aspects} role="group" aria-label="清晰度">
+              {QUALITIES.map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  aria-pressed={quality === q}
+                  className={quality === q ? `${styles.ratio} ${styles.on}` : styles.ratio}
+                  onClick={() => {
+                    setError("");
+                    setQuality(q);
+                  }}
+                >
+                  {q === "4K" && billing && !billing.allows4K ? "4K · 日更" : q}
+                </button>
+              ))}
+            </div>
+            {needDailyFor4K ? (
+              <p className={styles.hint}>
+                4K 要日更套餐。<Link href="/plans">去开通</Link>
+              </p>
+            ) : null}
+            <div className={styles.aspects} role="group" aria-label="成片时长">
+              {DURATION_PRESETS.map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  className={durationSec === d ? `${styles.ratio} ${styles.on}` : styles.ratio}
+                  onClick={() => setDurationSec(d)}
+                >
+                  {d}秒
+                </button>
+              ))}
+            </div>
+            <div className={styles.aspects} role="group" aria-label="这条口播做什么">
+              {(
+                [
+                  ["knowledge", "知识"],
+                  ["story", "情感"],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={talkKind === id ? `${styles.ratio} ${styles.on}` : styles.ratio}
+                  onClick={() => {
+                    setTalkKind(id);
+                    setIdea((prev) =>
+                      prev.trim()
+                        ? prev
+                        : id === "knowledge"
+                          ? "为什么一到晚上就想乱花钱"
+                          : "人到中年，谁还在等别人点头",
+                    );
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <textarea
-            className={styles.idea}
+            className={`${styles.idea} ${styles.ideaTalk}`}
             value={idea}
             onChange={(e) => setIdea(e.target.value)}
-            placeholder="先写这条口播要讲什么，确认文案后会写分镜文字，确认分镜后才出图"
-            rows={3}
+            placeholder={
+              talkKind === "knowledge"
+                ? "知识：先写要讲明白的一件事。确认文案后再写故事分镜。"
+                : "情感：先写要讲透的一种心情。确认文案后再写故事分镜。"
+            }
+            rows={9}
             required
             minLength={4}
           />
-          <textarea
-            className={styles.idea}
-            value={look}
-            onChange={(e) => setLook(e.target.value)}
-            placeholder="气质补充，可空。成片默认就是电影大片：赛博雨夜、西部荒漠、宫廷烛光…"
-            rows={2}
-          />
+          <details className={styles.fold}>
+            <summary>气质补充</summary>
+            <textarea
+              className={styles.idea}
+              value={look}
+              onChange={(e) => setLook(e.target.value)}
+              placeholder="可空，默认电影大片。赛博雨夜、西部荒漠、宫廷烛光…"
+              rows={2}
+            />
+          </details>
 
-          <button className={styles.go} type="submit" disabled={producing}>
-            {producing ? "正在打开这条口播…" : "先写文案"}
+          <button className={styles.go} type="submit" disabled={producing || (billing != null && billing.remaining <= 0)}>
+            {producing
+              ? "正在打开这条口播…"
+              : billing && billing.remaining <= 0
+                ? "本月条数用完了"
+                : "先写文案"}
           </button>
-          {error && <p className={styles.err}>{error}</p>}
+          <Link className={styles.goGhost} href="/talks">
+            我的视频
+          </Link>
+          {billing && billing.remaining <= 0 && (
+            <p className={styles.hint}>
+              <Link href="/plans">去开通或加买加条</Link>
+            </p>
+          )}
+          {error && (
+            <p className={styles.err}>
+              {error}
+              {/日更|开通|加买/.test(error) ? <Link href="/plans">去开通</Link> : null}
+            </p>
+          )}
         </form>
         </div>
 
         <section className={styles.stage} aria-live="polite">
           <div className={styles.panel}>
-            {!showTurn && !showCharacter && (
-              <div className={styles.empty}>
-                    <p>分镜墙</p>
-                    <small>文案定了之后，这里先出分镜文字，确认后再出图。也可先点开已保存的人物，看八个方位</small>
-              </div>
-            )}
+            {!showTurn && !showCharacter && <HomeWall />}
             {showTurn && turn && (
               <>
                 <div className={styles.bar}>
@@ -1042,6 +1246,9 @@ export default function HomePage() {
             )}
             {showCharacter && characterDetail && (
               <>
+                <button className={styles.ghost} type="button" onClick={() => setInspectCharacterId("")}>
+                  回去看片
+                </button>
                 <div className={styles.bar}>
                   <div>
                     <input

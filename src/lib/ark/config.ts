@@ -1,4 +1,4 @@
-import type { Aspect } from "../aspect";
+import { aspectSize, parseQuality, type Aspect } from "../aspect";
 
 export function getArkApiKey(): string {
   return (process.env.ARK_API_KEY || "").trim();
@@ -16,17 +16,16 @@ export function arkImageEndpoint(): string {
   return `${getArkBaseUrl()}/api/v3/images/generations`;
 }
 
-export const ARK_STILL_SIZE: Record<Aspect, string> = {
-  "9:16": "1440x2560",
-  "1:1": "2048x2048",
-  "16:9": "2560x1440",
-};
-
 export function arkStillSize(aspect?: Aspect, extraBody?: Record<string, unknown>): string {
-  if (aspect && ARK_STILL_SIZE[aspect]) return ARK_STILL_SIZE[aspect];
-  const size = extraBody?.size;
-  if (typeof size === "string" && size.trim()) return size.trim();
-  return ARK_STILL_SIZE["9:16"];
+  const raw = typeof extraBody?.size === "string" ? extraBody.size.trim() : "";
+  const quality = parseQuality(raw);
+  if (aspect) {
+    const { width, height } = aspectSize(aspect, quality);
+    return `${width}x${height}`;
+  }
+  if (/^\d+x\d+$/.test(raw)) return raw;
+  const fallback = aspectSize("9:16", quality);
+  return `${fallback.width}x${fallback.height}`;
 }
 
 export function mapArkImageError(status: number): string {

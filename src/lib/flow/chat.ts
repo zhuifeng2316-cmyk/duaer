@@ -8,9 +8,12 @@ import {
 } from "./config";
 import { extractChatContent, extractJsonObject, extractStreamDelta } from "./json";
 
+type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
+
 type ChatParams = {
   system: string;
   user: string;
+  messages?: ChatMessage[];
   temperature?: number;
   maxTokens?: number;
   model?: string;
@@ -20,14 +23,18 @@ type ChatParams = {
 
 function chatBody(params: ChatParams, stream: boolean): Record<string, unknown> {
   const model = (params.model || getTextModel()).trim();
+  const messages =
+    params.messages && params.messages.length
+      ? params.messages
+      : [
+          { role: "system" as const, content: params.system },
+          { role: "user" as const, content: params.user },
+        ];
   const body: Record<string, unknown> = {
     model,
     temperature: params.temperature ?? 0.7,
     stream,
-    messages: [
-      { role: "system", content: params.system },
-      { role: "user", content: params.user },
-    ],
+    messages,
   };
   if (/^(gpt-|o\d)/i.test(model)) body.max_completion_tokens = params.maxTokens ?? 2500;
   else body.max_tokens = params.maxTokens ?? 2500;

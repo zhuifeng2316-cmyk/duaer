@@ -1,0 +1,37 @@
+{
+  "id": "d8a936bd-f108-4a15-9bb2-86dccc59e550",
+  "idea": "为什么一到晚上就想乱花钱",
+  "mode": "knowledge",
+  "captionStyle": "",
+  "shots": [
+    {
+      "intent": "砸字",
+      "lettering": "overlay-slam",
+      "graphic": "",
+      "onScreen": "晚上乱买，可能是累了"
+    },
+    {
+      "lettering": "still-title",
+      "graphic": "",
+      "onScreen": "累了，更想立刻得到奖励"
+    },
+    {
+      "intent": "划重点",
+      "lettering": "overlay-highlight",
+      "graphic": "",
+      "onScreen": "眼前快乐＞花钱代价"
+    },
+    {
+      "lettering": "still-title",
+      "graphic": "",
+      "onScreen": "先加购，明早再决定"
+    }
+  ],
+  "frames": "/Users/morgan/project/AIvideo/specs/042-recipe-cinema-pipeline/frames/d8a936bd",
+  "sampleTimes": [
+    1,
+    3.7,
+    6.96,
+    10.53
+  ]
+}
