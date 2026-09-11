@@ -58,5 +58,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       /* 下次再出片会按分镜重写 */
     }
   }
-  return NextResponse.json({ project: publicProject(saved) });
+  const fresh = (await readProject(id)) || saved;
+  return NextResponse.json({
+    project: publicProject(fresh),
+    note: "已写进分镜，成片需再出一次片",
+  });
 }

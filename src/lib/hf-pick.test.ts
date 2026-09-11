@@ -224,6 +224,12 @@ describe("smart registry pick", () => {
     expect(compiled.shots[0]?.block).toBe("logo-outro");
     expect(shotNeedsPersonStill(compiled.shots[0]!)).toBe(false);
 
+    const glitch = applyHouseLabelToShot(base, 0, "故障字", "9:16");
+    expect(glitch.shots[0]?.captionStyle).toBe("caption-glitch-rgb");
+    expect(glitch.shots[0]?.overlay).toBeUndefined();
+    const glitchCompiled = compileDirector(glitch, "9:16");
+    expect(glitchCompiled.shots[0]?.captionStyle).toBe("caption-glitch-rgb");
+
     const orphan = {
       ...base,
       shots: base.shots.map((s, i) =>

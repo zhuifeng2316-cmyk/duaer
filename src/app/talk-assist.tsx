@@ -97,6 +97,7 @@ export function TalkAssistPanel({
 
   async function applyStyle(rec: CaptionRecommendation, target: "shot" | "all") {
     setError("");
+    setBusy(true);
     try {
       const body =
         target === "shot" && typeof rec.shotIndex === "number"
@@ -107,13 +108,13 @@ export function TalkAssistPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const data = (await res.json()) as { error?: string; project?: unknown };
+      const data = (await res.json()) as { error?: string; project?: unknown; note?: string };
       if (!res.ok) throw new Error(data.error || "字幕没改上");
-      setApplyNote(
+      const where =
         target === "shot" && typeof rec.shotIndex === "number"
           ? `已用到镜${rec.shotIndex + 1} · ${rec.label}`
-          : `已用到全片 · ${rec.label}`,
-      );
+          : `已用到全片 · ${rec.label}`;
+      setApplyNote(data.note ? `${where}。${data.note}` : `${where}。成片需再出一次片`);
       setAppliedKey(`${rec.id}:${target}:${rec.shotIndex ?? "all"}`);
       onApplied?.(
         target === "shot" && typeof rec.shotIndex === "number"
@@ -123,11 +124,14 @@ export function TalkAssistPanel({
       );
     } catch (err) {
       setApplyNote(err instanceof Error ? err.message : "字幕没改上");
+    } finally {
+      setBusy(false);
     }
   }
 
   async function applyGraphic(rec: GraphicRecommendation, target: "shot" | "all") {
     setError("");
+    setBusy(true);
     try {
       const body =
         target === "shot" && typeof rec.shotIndex === "number"
@@ -138,13 +142,13 @@ export function TalkAssistPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const data = (await res.json()) as { error?: string; project?: unknown };
+      const data = (await res.json()) as { error?: string; project?: unknown; note?: string };
       if (!res.ok) throw new Error(data.error || "组件没改上");
-      setApplyNote(
+      const where =
         target === "shot" && typeof rec.shotIndex === "number"
           ? `已用到镜${rec.shotIndex + 1} · ${rec.label}`
-          : `已用到各镜 · ${rec.label}`,
-      );
+          : `已用到各镜 · ${rec.label}`;
+      setApplyNote(data.note ? `${where}。${data.note}` : `${where}。成片需再出一次片`);
       setAppliedGfxKey(`${rec.wraps}:${target}:${rec.shotIndex ?? "all"}`);
       onApplied?.(
         target === "shot" && typeof rec.shotIndex === "number"
@@ -154,6 +158,8 @@ export function TalkAssistPanel({
       );
     } catch (err) {
       setApplyNote(err instanceof Error ? err.message : "组件没改上");
+    } finally {
+      setBusy(false);
     }
   }
 

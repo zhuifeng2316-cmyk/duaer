@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "fs";
 import path from "path";
 import { aspectFamily, type Aspect, type AspectFamily } from "./aspect";
+import { parseCaptionStyle } from "./caption-styles";
 import { cinemaGraphicToken } from "./cinema";
 import { graphicAssetRel, houseCatalog, houseFitsFamily, houseFitsPreferred, houseItem } from "./duaer-registry";
 import { HOUSE_REGISTRY_ROOT, isKnownGraphic, registryCatalog, registryItem, registryRel, type RegistryItem, type VisualMode } from "./hf-registry";
@@ -587,6 +588,20 @@ export function assignGraphics(script: Script, aspect: Aspect = "9:16"): Script 
   const used: string[] = [];
   const mapped = script.shots.map((shot) => {
     const intent = String(shot.graphicIntent || "").trim() || inferIntentLabel(shot, mode);
+    const pinnedCaption = shot.graphicLock ? parseCaptionStyle(shot.captionStyle) : undefined;
+    if (pinnedCaption) {
+      return {
+        ...shot,
+        graphicIntent: intent || shot.graphicIntent,
+        overlay: undefined,
+        block: undefined,
+        graphicVars: undefined,
+        graphicAssets: undefined,
+        graphicLock: true,
+        captionStyle: pinnedCaption,
+        hostStill: shot.hostStill === false ? undefined : shot.hostStill,
+      };
+    }
     const picked = pickGraphicForShot({ ...shot, graphicIntent: intent }, mode, used, aspect, true);
       if (!picked) {
         return {
@@ -611,7 +626,13 @@ export function assignGraphics(script: Script, aspect: Aspect = "9:16"): Script 
         overlay: picked.type === "component" ? picked.name : undefined,
         block: picked.type === "block" ? picked.name : undefined,
         hostStill: host ? false : shot.hostStill,
-        graphicLock: shot.graphicLock && (shot.overlay === picked.name || shot.block === picked.name) ? true : undefined,
+        graphicLock:
+          shot.graphicLock &&
+          (house?.label === (intent || shot.graphicIntent) ||
+            shot.overlay === picked.name ||
+            shot.block === picked.name)
+            ? true
+            : undefined,
         kind: host && !String(shot.imagePrompt || "").trim() ? "empty" : shot.kind,
         graphicAssets,
         graphicVars: fillRegistryVars(readRegistryVariables(picked.name), { ...shot, graphicIntent: intent, graphicAssets }),
@@ -634,6 +655,25 @@ export function applyHouseLabelToShot(script: Script, shotIndex: number, label: 
     houseCatalog().find((h) => h.aliases.includes(intent));
   if (!house) return script;
   if (!houseFitsFamily(house, aspectFamily(aspect))) return script;
+
+  // 字类目录项走字幕样式：墙上立刻能看见预览，不会被空壳 caption 组件卸掉。
+  const asCaption = parseCaptionStyle(house.wraps);
+  if (asCaption) {
+    const nextShot: Shot = {
+      ...shot,
+      graphicIntent: house.label,
+      overlay: undefined,
+      block: undefined,
+      graphicVars: undefined,
+      graphicAssets: undefined,
+      graphicLock: true,
+      captionStyle: asCaption,
+      hostStill: shot.hostStill === false ? undefined : shot.hostStill,
+    };
+    const shots = script.shots.map((row, i) => (i === shotIndex ? nextShot : row));
+    return { ...script, shots: alignShotMotions(shots) };
+  }
+
   const picked = pickFromHouse(house.wraps, { ...shot, graphicIntent: house.label }, 99);
   if (!picked) return script;
   const graphicAssets = attachHouseAssets(shot, picked.name);

@@ -5,12 +5,27 @@ import { applyHouseLabelToShot, applyHouseLabelToShots } from "@/lib/hf-pick";
 import { shotNeedsPersonStill } from "@/lib/graphic-board";
 import { isProduceBusy, startRegenStill } from "@/lib/pipeline";
 import { readProject, updateProject } from "@/lib/store";
-import { publicProject } from "@/lib/types";
+import { publicProject, type Shot } from "@/lib/types";
 
 function canEditGraphic(status: string, phase: string): boolean {
   if (status === "ready") return true;
   if (status === "review" && (phase === "board" || phase === "images")) return true;
   return false;
+}
+
+function shotHasHouse(shot: Shot | undefined, house: { label: string; wraps: string }): boolean {
+  if (!shot) return false;
+  return (
+    shot.graphicIntent === house.label ||
+    shot.overlay === house.wraps ||
+    shot.block === house.wraps ||
+    shot.captionStyle === house.wraps
+  );
+}
+
+function shotGraphicSig(shot: Shot | undefined): string {
+  if (!shot) return "";
+  return [shot.graphicIntent || "", shot.overlay || "", shot.block || "", shot.captionStyle || "", shot.graphicLock ? "1" : "0"].join("|");
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -44,13 +59,16 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       ? applyHouseLabelToShots(before, house.label, project.aspect)
       : applyHouseLabelToShot(before, shotIndex, house.label, project.aspect);
 
-  const changed =
-    shotIndex == null
-      ? script.shots.some((shot, i) => shot.graphicIntent !== before.shots[i]?.graphicIntent || shot.overlay !== before.shots[i]?.overlay || shot.block !== before.shots[i]?.block)
-      : script.shots[shotIndex!]?.overlay !== before.shots[shotIndex!]?.overlay ||
-        script.shots[shotIndex!]?.block !== before.shots[shotIndex!]?.block ||
-        script.shots[shotIndex!]?.graphicIntent !== before.shots[shotIndex!]?.graphicIntent;
+  const targets =
+    shotIndex == null ? script.shots.map((_, i) => i) : [shotIndex];
+  const changed = targets.some((i) => shotGraphicSig(script.shots[i]) !== shotGraphicSig(before.shots[i]));
   if (!changed) {
+    if (targets.every((i) => shotHasHouse(before.shots[i], house))) {
+      return NextResponse.json({
+        project: publicProject(project),
+        note: shotIndex == null ? "各镜已经是这个组件了" : `镜${shotIndex + 1}已经是这个组件了`,
+      });
+    }
     return NextResponse.json({ error: "这个组件和当前画幅挂不上" }, { status: 400 });
   }
 
@@ -60,20 +78,17 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   for (let i = 0; i < script.shots.length; i++) {
     if (shotIndex != null && i !== shotIndex) continue;
     const shot = script.shots[i]!;
-    // Keep existing person stills for the wall preview. Host cinema paths already
-    // skip them via shotNeedsPersonStill — wiping here left "04 组件" empty cards
-    // when recipe/aspect later stripped the wrap.
     if (shotNeedsPersonStill(shot) && !stills[i] && (project.phase === "images" || project.status === "ready")) {
       regen.push(i);
     }
   }
 
-  const saved = await updateProject(id, {
+  await updateProject(id, {
     script,
     stills,
     ...(regen.length ? { regenShotIndex: regen[0], message: `正在出镜 ${regen[0]! + 1}的画面…` } : {}),
   });
-  if (saved.htmlPath) {
+  if (project.htmlPath) {
     try {
       await rewriteCinemaHtml(id);
     } catch {
@@ -81,5 +96,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
   }
   for (const i of regen) startRegenStill(id, i);
-  return NextResponse.json({ project: publicProject(saved) });
+  const fresh = (await readProject(id)) || project;
+  return NextResponse.json({
+    project: publicProject(fresh),
+    note: "已写进分镜，成片需再出一次片",
+  });
 }

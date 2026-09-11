@@ -34,6 +34,7 @@ function graphicOwnsLettering(shot: Shot): boolean {
 }
 
 function dropEmptyCaptionGraphic(shot: Shot): Shot {
+  if (shot.graphicLock) return shot;
   const name = shotName(shot);
   if (!/^caption-|^hw-title$|^typewriter$|^titlecard-/.test(name)) return shot;
   if (graphicHoldsLettering(name, shot.graphicVars)) return shot;

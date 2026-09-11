@@ -270,6 +270,7 @@ export function TalkWorkspace({
   const [missing, setMissing] = useState(false);
   const [assistAppliedKey, setAssistAppliedKey] = useState("");
   const [assistAppliedGfxKey, setAssistAppliedGfxKey] = useState("");
+  const [assistApplyHint, setAssistApplyHint] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -486,9 +487,10 @@ export function TalkWorkspace({
         body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "组件没换上");
+      if (!res.ok) throw new Error(data.error || data.note || "组件没换上");
       if (data.project) setProject(data.project);
       setAssistAppliedGfxKey(`${rec.wraps}:${target}:${rec.shotIndex ?? "all"}`);
+      setAssistApplyHint(data.note || "已写进分镜，成片需再出一次片");
       onAssistApply?.(
         target === "shot" && typeof rec.shotIndex === "number"
           ? { kind: "shot", shotIndex: rec.shotIndex }
@@ -496,6 +498,7 @@ export function TalkWorkspace({
         data.project,
       );
     } catch (err) {
+      setAssistApplyHint("");
       setError(err instanceof Error ? err.message : "组件没换上");
     } finally {
       setGraphicBusy(false);
@@ -520,6 +523,7 @@ export function TalkWorkspace({
       if (!res.ok) throw new Error(data.error || "字幕没换上");
       if (data.project) setProject(data.project);
       setAssistAppliedKey(`${rec.id}:${target}:${rec.shotIndex ?? "all"}`);
+      setAssistApplyHint(data.note || "已写进分镜，成片需再出一次片");
       onAssistApply?.(
         target === "shot" && typeof rec.shotIndex === "number"
           ? { kind: "shot", shotIndex: rec.shotIndex }
@@ -527,6 +531,7 @@ export function TalkWorkspace({
         data.project,
       );
     } catch (err) {
+      setAssistApplyHint("");
       setError(err instanceof Error ? err.message : "字幕没换上");
     } finally {
       setCaptionBusy(false);
@@ -614,6 +619,7 @@ export function TalkWorkspace({
                   <p className={styles.assistStageTitle}>助手推荐字幕</p>
                   <p className={styles.assistStageLede}>叠在对应故事片上预览，可只用这一镜或用到全片</p>
                 </div>
+                {assistApplyHint && !assistGraphics.length ? <p className={styles.assistNote}>{assistApplyHint}</p> : null}
                 <AssistCaptionRecCards
                   recommendations={assistRecommendations}
                   shots={
@@ -637,6 +643,7 @@ export function TalkWorkspace({
                   <p className={styles.assistStageTitle}>助手推荐组件</p>
                   <p className={styles.assistStageLede}>叠在对应故事片上预览，可只用这一镜或用到各镜</p>
                 </div>
+                {assistApplyHint ? <p className={styles.assistNote}>{assistApplyHint}</p> : null}
                 <AssistGraphicRecCards
                   recommendations={assistGraphics}
                   shots={
