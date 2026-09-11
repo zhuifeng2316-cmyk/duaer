@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyHouseLabelToShot,
   assignGraphics,
   englishQueryForIntent,
   fillRegistryVars,
@@ -9,6 +10,8 @@ import {
   readRegistryVariables,
   varsCarryTalkCopy,
 } from "./hf-pick";
+import { compileDirector } from "./director-compile";
+import { shotNeedsPersonStill } from "./graphic-board";
 import { MOCK_SCRIPT } from "./copy";
 
 describe("smart registry pick", () => {
@@ -188,5 +191,48 @@ describe("smart registry pick", () => {
     expect(vars.ecCta).toBe("去做一条");
     expect(String(vars.questionMessage)).not.toMatch(/launch video/i);
     expect(String(vars.benefitMessage)).not.toMatch(/4K|editor/i);
+  });
+
+  it("keeps exact full-catalog labels through recipe compile and clears orphan hostStill", () => {
+    const base = {
+      ...MOCK_SCRIPT,
+      visualMode: "story" as const,
+      shots: MOCK_SCRIPT.shots.map((s, i) =>
+        i === 0
+          ? {
+              ...s,
+              graphicIntent: "手写标题",
+              overlay: undefined,
+              block: undefined,
+              hostStill: undefined,
+              graphicLock: undefined,
+              imagePrompt: "人物半身，侧光，闭口",
+            }
+          : s,
+      ),
+    };
+    const applied = applyHouseLabelToShot(base, 0, "标志收尾", "9:16");
+    expect(applied.shots[0]?.block).toBe("logo-outro");
+    expect(applied.shots[0]?.graphicLock).toBe(true);
+    expect(applied.shots[0]?.hostStill).toBe(false);
+
+    const assigned = assignGraphics(applied, "9:16");
+    expect(assigned.shots[0]?.block).toBe("logo-outro");
+    expect(assigned.shots[0]?.graphicLock).toBe(true);
+
+    const compiled = compileDirector(applied, "9:16");
+    expect(compiled.shots[0]?.block).toBe("logo-outro");
+    expect(shotNeedsPersonStill(compiled.shots[0]!)).toBe(false);
+
+    const orphan = {
+      ...base,
+      shots: base.shots.map((s, i) =>
+        i === 0 ? { ...s, graphicIntent: "不存在的组件名xyz", block: undefined, hostStill: false as const } : s,
+      ),
+    };
+    const cleared = assignGraphics(orphan, "9:16");
+    expect(cleared.shots[0]?.block).toBeUndefined();
+    expect(cleared.shots[0]?.hostStill).toBeUndefined();
+    expect(shotNeedsPersonStill(cleared.shots[0]!)).toBe(true);
   });
 });

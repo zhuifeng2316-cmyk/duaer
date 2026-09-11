@@ -84,5 +84,6 @@
 - **C 端 seek `[0,0]`**：已修（Range + faststart）
 - **聊天英文演示壳**：已修（中文 vars + skin）
 - **流程图嵌套成片空白**：已修 — house 改 `<template>`+#root；同画幅改满屏 overlay；时间轴首帧即画出节点，去掉收尾闪白
+- **助手点全库宿主掏空故事墙**：已修 — 点选不再抹静帧；`graphicLock` 让配方编译保留作者点选；卸掉组件时清掉孤儿 `hostStill:false`
 - 杂志字/字重官方组件无变量 → 原生字层 + captionStyle（已接受）
 - 手绘流程 / 横版图表：跳过(干跑即可)

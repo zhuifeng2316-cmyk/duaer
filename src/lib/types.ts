@@ -23,6 +23,8 @@ export type Shot = {
   graphicAssets?: Record<string, string>;
   graphicUploads?: string[];
   hostStill?: boolean;
+  /** 作者在助手里点选的全库组件：配方编译不得卸掉。 */
+  graphicLock?: boolean;
   /** 这张人物静帧已经把本镜屏幕字画进画面，合成不再叠同一层字。 */
   letteringInStill?: boolean;
   /** 这一镜字怎么出：成片砸/擦/划重点、画进图、组件自带。 */

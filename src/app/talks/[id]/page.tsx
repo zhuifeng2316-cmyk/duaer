@@ -80,7 +80,7 @@ export default function TalkDetailPage() {
 
   return (
     <div className={styles.world}>
-      <div className={styles.layout}>
+      <div className={`${styles.layout} ${styles.talkLayout}`}>
         <div className={styles.rail}>
           <TalkAssistPanel
             talkId={id}

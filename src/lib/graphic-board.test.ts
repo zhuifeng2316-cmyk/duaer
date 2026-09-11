@@ -23,6 +23,8 @@ describe("graphic board", () => {
     expect(shotNeedsPersonStill({ overlay: "pull-to-refresh" })).toBe(true);
     expect(shotNeedsPersonStill({ overlay: "pull-to-refresh", hostStill: false })).toBe(false);
     expect(shotNeedsPersonStill({ scene: "窗边" } as never)).toBe(true);
+    // Orphaned hostStill:false (wrap stripped) must still ask for a person frame.
+    expect(shotNeedsPersonStill({ hostStill: false })).toBe(true);
   });
 
   it("lets a talk confirm when host shots have no clone still", () => {

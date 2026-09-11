@@ -345,7 +345,7 @@ export function AssistGraphicRecCards({
 }) {
   if (!recommendations.length) return null;
   return (
-    <div className={dense ? styles.assistGfxList : styles.assistStageGrid}>
+    <div className={dense ? styles.assistGfxList : styles.assistGfxStrip}>
       {recommendations.map((rec) => {
         const shot =
           typeof rec.shotIndex === "number" && rec.shotIndex >= 0
@@ -365,8 +365,8 @@ export function AssistGraphicRecCards({
             key={`${rec.wraps}-${rec.shotIndex ?? "all"}`}
             className={
               selected
-                ? `${styles.assistStyleCard} ${styles.assistStyleCardOn}`
-                : styles.assistStyleCard
+                ? `${styles.assistGfxCardH} ${styles.assistStyleCardOn}`
+                : styles.assistGfxCardH
             }
           >
             <div className={`${styles.coverThumbFrame} ${styles.assistGfxFrame} ${frameClass}`}>
@@ -386,33 +386,34 @@ export function AssistGraphicRecCards({
                 <div className={styles.assistGfxCopy}>
                   <span className={styles.assistGfxKind}>{kindLabel}</span>
                   <p className={styles.assistGfxLabel}>{rec.label}</p>
-                  {shot?.text ? <em className={styles.assistGfxHint}>{shot.text.slice(0, 16)}</em> : null}
                 </div>
               </div>
             </div>
-            <p className={styles.assistStyleName}>{rec.label}</p>
-            <p className={styles.assistStyleShot}>
-              {shotLabel} · {kindLabel}
-            </p>
-            <div className={styles.assistStyleActions}>
-              {canShot ? (
+            <div className={styles.assistGfxMeta}>
+              <p className={styles.assistStyleName}>{rec.label}</p>
+              <p className={styles.assistStyleShot}>
+                {shotLabel} · {kindLabel}
+              </p>
+              <div className={styles.assistStyleActions}>
+                {canShot ? (
+                  <button
+                    type="button"
+                    className={styles.assistStyleBtn}
+                    disabled={busy}
+                    onClick={() => onApply(rec, "shot")}
+                  >
+                    用到这一镜
+                  </button>
+                ) : null}
                 <button
                   type="button"
-                  className={styles.assistStyleBtn}
+                  className={styles.assistStyleBtnPrimary}
                   disabled={busy}
-                  onClick={() => onApply(rec, "shot")}
+                  onClick={() => onApply(rec, "all")}
                 >
-                  用到这一镜
+                  用到各镜
                 </button>
-              ) : null}
-              <button
-                type="button"
-                className={styles.assistStyleBtnPrimary}
-                disabled={busy}
-                onClick={() => onApply(rec, "all")}
-              >
-                用到各镜
-              </button>
+              </div>
             </div>
           </article>
         );

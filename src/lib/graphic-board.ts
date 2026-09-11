@@ -36,7 +36,11 @@ export function graphicIsHost(name?: string): boolean {
 
 export function shotNeedsPersonStill(shot: Pick<Shot, "overlay" | "block" | "hostStill">): boolean {
   if (shot.hostStill === true) return true;
-  if (shot.hostStill === false) return false;
+  if (shot.hostStill === false) {
+    // Explicit false only sticks when a graphic is mounted. Orphaned false
+    // (host stripped by aspect/recipe) must still ask for a person still.
+    return !shotGraphicName(shot);
+  }
   return !graphicIsHost(shotGraphicName(shot));
 }
 

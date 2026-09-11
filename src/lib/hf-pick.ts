@@ -525,17 +525,22 @@ export function pickGraphicForShot(
 ): GraphicPick | undefined {
   const intent = String(shot.graphicIntent || "").trim() || inferIntentLabel(shot, mode);
   if (!intent) return undefined;
-  if (recipeOnly && !recipeAllowsIntent(mode, intent)) return undefined;
   const family = aspectFamily(aspect);
-  // Exact label wins even if already used — remount same wrap, never a stranger.
+  const locked =
+    shot.graphicLock === true && Boolean(shot.overlay || shot.block);
+  // Exact catalog label. Recipe compile keeps author-locked full-catalog pins;
+  // bare intents outside the recipe/mode still must not invent a wrap.
   const exact = houseCatalog().find(
-    (h) => h.modes.includes(mode) && (h.label === intent || h.aliases.includes(intent)),
+    (h) =>
+      (h.label === intent || h.aliases.includes(intent)) &&
+      (h.modes.includes(mode) || (locked && (shot.overlay === h.wraps || shot.block === h.wraps))),
   );
   if (exact) {
     if (!houseFitsFamily(exact, family)) return undefined;
-    if (recipeOnly && !recipeAllowsWrap(mode, exact.wraps)) return undefined;
+    if (recipeOnly && !recipeAllowsWrap(mode, exact.wraps) && !locked) return undefined;
     return pickFromHouse(exact.wraps, shot, 99);
   }
+  if (recipeOnly && !recipeAllowsIntent(mode, intent)) return undefined;
   const matches = houseCatalog().filter(
     (h) =>
       h.modes.includes(mode) &&
@@ -584,7 +589,17 @@ export function assignGraphics(script: Script, aspect: Aspect = "9:16"): Script 
     const intent = String(shot.graphicIntent || "").trim() || inferIntentLabel(shot, mode);
     const picked = pickGraphicForShot({ ...shot, graphicIntent: intent }, mode, used, aspect, true);
       if (!picked) {
-        return { ...shot, graphicIntent: intent || undefined, overlay: undefined, block: undefined, graphicVars: undefined, graphicAssets: undefined };
+        return {
+          ...shot,
+          graphicIntent: intent || undefined,
+          overlay: undefined,
+          block: undefined,
+          graphicVars: undefined,
+          graphicAssets: undefined,
+          graphicLock: undefined,
+          // Drop orphaned hostStill:false so the wall still asks for a person frame.
+          hostStill: undefined,
+        };
       }
       used.push(picked.name);
       const graphicAssets = attachHouseAssets(shot, picked.name);
@@ -596,6 +611,7 @@ export function assignGraphics(script: Script, aspect: Aspect = "9:16"): Script 
         overlay: picked.type === "component" ? picked.name : undefined,
         block: picked.type === "block" ? picked.name : undefined,
         hostStill: host ? false : shot.hostStill,
+        graphicLock: shot.graphicLock && (shot.overlay === picked.name || shot.block === picked.name) ? true : undefined,
         kind: host && !String(shot.imagePrompt || "").trim() ? "empty" : shot.kind,
         graphicAssets,
         graphicVars: fillRegistryVars(readRegistryVariables(picked.name), { ...shot, graphicIntent: intent, graphicAssets }),
@@ -607,7 +623,7 @@ export function assignGraphics(script: Script, aspect: Aspect = "9:16"): Script 
   };
 }
 
-/** 作者点选组件中文名时：不限题材白名单，按目录精确落到那一镜。 */
+/** 作者点选组件中文名时：不限题材白名单，按目录精确落到那一镜。画幅不合则不改。 */
 export function applyHouseLabelToShot(script: Script, shotIndex: number, label: string, aspect: Aspect = "9:16"): Script {
   const shot = script.shots[shotIndex];
   if (!shot) return script;
@@ -617,6 +633,7 @@ export function applyHouseLabelToShot(script: Script, shotIndex: number, label: 
     houseCatalog().find((h) => h.label === intent) ||
     houseCatalog().find((h) => h.aliases.includes(intent));
   if (!house) return script;
+  if (!houseFitsFamily(house, aspectFamily(aspect))) return script;
   const picked = pickFromHouse(house.wraps, { ...shot, graphicIntent: house.label }, 99);
   if (!picked) return script;
   const graphicAssets = attachHouseAssets(shot, picked.name);
@@ -627,6 +644,7 @@ export function applyHouseLabelToShot(script: Script, shotIndex: number, label: 
     overlay: picked.type === "component" ? picked.name : undefined,
     block: picked.type === "block" ? picked.name : undefined,
     hostStill: host ? false : shot.hostStill,
+    graphicLock: true,
     kind: host && !String(shot.imagePrompt || "").trim() ? "empty" : shot.kind,
     graphicAssets,
     graphicVars: fillRegistryVars(readRegistryVariables(picked.name), {

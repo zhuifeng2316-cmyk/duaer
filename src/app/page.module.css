@@ -41,6 +41,10 @@
   overflow: hidden;
 }
 
+.talkLayout {
+  grid-template-columns: 460px minmax(0, 1fr);
+}
+
 .rail {
   min-height: 0;
   min-width: 0;
@@ -2518,6 +2522,13 @@
 .assistGfxList {
   display: grid;
   grid-template-columns: 1fr;
+  gap: 10px;
+  width: 100%;
+}
+
+.assistGfxStrip {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 12px;
   width: 100%;
 }
@@ -2529,6 +2540,14 @@
   min-width: 0;
 }
 
+.assistGfxCardH {
+  display: grid;
+  grid-template-columns: 7fr 3fr;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
 .assistGfxMeta {
   display: grid;
   gap: 6px;
@@ -2537,9 +2556,21 @@
 }
 
 .assistGfxFrame {
-  min-height: 112px;
+  min-height: 84px;
   aspect-ratio: 16 / 9;
   overflow: hidden;
+}
+
+.assistGfxCardH .assistGfxLabel {
+  font-size: clamp(13px, 1.6vw, 18px);
+}
+
+.assistGfxCardH .assistGfxCopy {
+  gap: 4px;
+}
+
+.assistGfxCardH .assistGfxHint {
+  display: none;
 }
 
 .assistGfxStillDim {

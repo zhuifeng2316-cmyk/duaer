@@ -38,10 +38,21 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     return NextResponse.json({ error: "这一镜不在" }, { status: 400 });
   }
 
+  const before = project.script;
   const script =
     shotIndex == null
-      ? applyHouseLabelToShots(project.script, house.label, project.aspect)
-      : applyHouseLabelToShot(project.script, shotIndex, house.label, project.aspect);
+      ? applyHouseLabelToShots(before, house.label, project.aspect)
+      : applyHouseLabelToShot(before, shotIndex, house.label, project.aspect);
+
+  const changed =
+    shotIndex == null
+      ? script.shots.some((shot, i) => shot.graphicIntent !== before.shots[i]?.graphicIntent || shot.overlay !== before.shots[i]?.overlay || shot.block !== before.shots[i]?.block)
+      : script.shots[shotIndex!]?.overlay !== before.shots[shotIndex!]?.overlay ||
+        script.shots[shotIndex!]?.block !== before.shots[shotIndex!]?.block ||
+        script.shots[shotIndex!]?.graphicIntent !== before.shots[shotIndex!]?.graphicIntent;
+  if (!changed) {
+    return NextResponse.json({ error: "这个组件和当前画幅挂不上" }, { status: 400 });
+  }
 
   const stills = project.stills.slice();
   while (stills.length < script.shots.length) stills.push("");
@@ -49,10 +60,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   for (let i = 0; i < script.shots.length; i++) {
     if (shotIndex != null && i !== shotIndex) continue;
     const shot = script.shots[i]!;
-    if (shotNeedsPersonStill(shot)) {
-      if (!stills[i] && (project.phase === "images" || project.status === "ready")) regen.push(i);
-    } else {
-      stills[i] = "";
+    // Keep existing person stills for the wall preview. Host cinema paths already
+    // skip them via shotNeedsPersonStill — wiping here left "04 组件" empty cards
+    // when recipe/aspect later stripped the wrap.
+    if (shotNeedsPersonStill(shot) && !stills[i] && (project.phase === "images" || project.status === "ready")) {
+      regen.push(i);
     }
   }
 

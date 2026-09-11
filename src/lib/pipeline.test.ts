@@ -72,6 +72,9 @@ describe("c-end copy has no vendor names", () => {
     expect(visible).toMatch(/全片字幕/);
     expect(talkDetail).toMatch(/TalkAssistPanel/);
     expect(talkDetail).toMatch(/styles\.layout/);
+    expect(talkDetail).toMatch(/talkLayout/);
+    expect(pageCss).toMatch(/talkLayout/);
+    expect(pageCss).toMatch(/7fr 3fr|grid-template-columns:\s*7fr\s+3fr/);
     expect(talkDetail).toMatch(/styles\.rail/);
     expect(talkDetail).toMatch(/styles\.talkFrame/);
     expect(assist).toMatch(/AssistMarkdown/);
@@ -93,6 +96,7 @@ describe("c-end copy has no vendor names", () => {
     expect(pageCss).toMatch(/assistStageRecs/);
     expect(pageCss).toMatch(/assistGfxPreview/);
     expect(pageCss).toMatch(/assistGfxList/);
+    expect(pageCss).toMatch(/assistGfxCardH|assistGfxStrip/);
     expect(pageCss).toMatch(/assistGfxMotFlash/);
     expect(pageCss).toMatch(/assistGfxCarousel/);
     expect(pageCss).toMatch(/assistGfxCarOrbit|assistGfxCarPath|assistGfxCarVision/);
